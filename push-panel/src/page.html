@@ -42,20 +42,16 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 .save .btn{max-width:508px;margin:auto;display:block;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 .msg{margin-top:12px;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.6}
 .msg.ok{background:#E8F4EE;color:var(--ok)}.msg.bad{background:#FBEAEA;color:var(--bad)}
-.toast{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;transition:.3s;opacity:0;pointer-events:none}
+.toast{position:fixed;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;transition:.3s;opacity:0;pointer-events:none}
 .toast.show{opacity:1}
 .prev{background:linear-gradient(160deg,#2b2b2e,#18181a);border-radius:22px;padding:22px 14px}
 .note{background:rgba(255,255,255,.88);border-radius:18px;padding:11px 13px;display:flex;gap:10px;align-items:flex-start}
 .ic{flex:none;width:38px;height:38px;border-radius:9px;background:#1A1A1A;color:var(--gold2);display:grid;place-items:center;font-weight:700}
 .nb{flex:1;min-width:0}.nh{display:flex;justify-content:space-between;font-size:13px}.nh span{color:#777;font-size:12px}
 .nt{font-size:14px;line-height:1.5;color:#222;margin-top:2px;word-wrap:break-word}
-.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
-.item:first-of-type{border-top:0}
-.item.off{opacity:.42}
-.thumb{flex:none;width:46px;height:46px;border-radius:50%;padding:2px;background:linear-gradient(135deg,#E9DCC6,#B08D57)}
+.thumb{flex:none;width:46px;height:46px;border-radius:50%;padding:2px;background:linear-gradient(135deg,#E9DCC6,#B08D57);cursor:pointer}
 .thumb div{width:100%;height:100%;border-radius:50%;background:#fff center/72% no-repeat;display:grid;place-items:center;font-size:18px}
 .thumb.dark div{background-color:#1A1A1A;color:var(--gold2)}
-.item input{padding:9px 11px;font-size:15px;border-radius:11px}
 .ctl{display:flex;gap:4px;flex:none}
 .ctl button{width:34px;height:34px;border:0;border-radius:10px;background:var(--bg);font-size:15px;color:var(--ink)}
 .add{display:flex;gap:8px;margin-top:12px}.add select{flex:1}
@@ -72,6 +68,27 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 .sw label:after{content:'';position:absolute;top:3px;right:3px;width:25px;height:25px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .sw input:checked+label{background:var(--ok)}
 .sw input:checked+label:after{right:24px}
+.blk{padding:14px}
+.bh{display:flex;align-items:center;gap:8px}
+.badge{flex:none;font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:#FBF6EE;color:#7A5C2E}
+.bh input{flex:1;min-width:60px;padding:9px 11px;font-size:15px;border-radius:11px}
+.bh .hint{flex:1;margin:0}
+.bh .ctl button{width:32px;height:32px}
+.blk.off{opacity:.45}
+.sub{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.ic2{display:flex;flex-direction:column;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.ic2:first-child{border-top:0}
+.ic2 .r1{display:flex;align-items:center;gap:10px}
+.ic2 .r1 input{flex:1;min-width:80px;padding:9px 11px;font-size:15px;border-radius:11px}
+.ic2 .r2{display:flex;gap:8px;padding-right:56px}
+.ic2 .r2 select,.ic2 .r2 input{padding:9px 10px;font-size:14px;border-radius:11px}
+.ic2 .r2 select{flex:0 0 44%}
+.mini{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mini select{width:auto;flex:1;padding:10px;font-size:14px}
+.wide{width:100%;margin-top:8px}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end}
+.sheetBox{background:#fff;width:100%;max-width:540px;margin:0 auto;border-radius:24px 24px 0 0;padding:20px 16px max(18px,env(safe-area-inset-bottom))}
+.sheetBox .h{margin-bottom:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -133,19 +150,30 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 
 <!-- ═════════ الرئيسية ═════════ -->
 <section id="t-home" class="hide">
+  <p class="hint" style="margin:0 4px 10px">الرئيسية تتكوّن من قطع — رتّبها بالأسهم ↑↓، وأضف اللي تبي من تحت. الشعار والبحث ثابتين فوق.</p>
+  <div id="blocks"></div>
   <div class="card">
-    <div class="h">دوائر الأقسام</div>
-    <p class="hint">رتّب بالأسهم ↑↓ · 👁 إخفاء · 🖼 صورة من رابط منتج · ✕ حذف</p>
-    <div id="circles" class="row"></div>
-    <div class="add"><select id="addCircle"></select><button class="btn2" id="addCircleBtn">إضافة</button></div>
-  </div>
-  <div class="card">
-    <div class="h">صفوف المنتجات</div>
-    <p class="hint">الصفوف اللي تحت الدوائر في الرئيسية — عدّل العنوان ورتّبها.</p>
-    <div id="rails" class="row"></div>
-    <div class="add"><select id="addRail"></select><button class="btn2" id="addRailBtn">إضافة</button></div>
+    <div class="h">إضافة قطعة</div>
+    <div class="chips row" id="addBlock">
+      <button data-v="circles">＋ أيقونات</button>
+      <button data-v="products">＋ منتجات</button>
+      <button data-v="banners">＋ البانرات</button>
+      <button data-v="features">＋ شريط المزايا</button>
+    </div>
   </div>
 </section>
+
+<!-- نافذة اختيار الصورة -->
+<div class="sheet hide" id="sheet">
+  <div class="sheetBox">
+    <div class="h">صورة الأيقونة</div>
+    <button class="btn2 wide" id="shUpload">📷 رفع من الجوال</button>
+    <button class="btn2 wide" id="shLink">🔗 من رابط منتج أو صورة</button>
+    <button class="btn2 wide" id="shClear">↺ بدون صورة (تلقائي)</button>
+    <button class="link wide" id="shCancel">إلغاء</button>
+  </div>
+</div>
+<input type="file" id="fileIn" accept="image/*" class="hide">
 
 <!-- ═════════ البوب اب ═════════ -->
 <section id="t-popup" class="hide">
@@ -156,7 +184,8 @@ textarea{resize:none;min-height:86px;line-height:1.6}
   <div class="card">
     <span class="t">الصورة</span>
     <div class="add" style="margin-top:0"><input id="pLink" dir="ltr" placeholder="رابط منتج من المتجر أو رابط صورة"><button class="btn2" id="pFetch">جلب</button></div>
-    <p class="hint">الصق رابط منتج من bronz-sa.com وأسحب صورته تلقائيًا.</p>
+    <div class="add"><button class="btn2 wide" style="margin-top:0" id="pUpload">📷 رفع صورة من الجوال</button><button class="btn2" id="pClear">إزالة</button></div>
+    <p class="hint">المقاس المثالي 1200×720. أو الصق رابط منتج من bronz-sa.com وأسحب صورته.</p>
     <div class="row"><span class="t">العنوان</span><input id="pTitle" maxlength="60" placeholder="عرض خاص ✨"></div>
     <div class="row"><span class="t">النص</span><textarea id="pBody" maxlength="240" placeholder="خصم 20% على كل العطور لين نهاية الأسبوع"></textarea></div>
     <div class="row"><span class="t">نص الزر</span><input id="pBtn" maxlength="30" placeholder="تسوّق الآن"></div>
@@ -164,7 +193,7 @@ textarea{resize:none;min-height:86px;line-height:1.6}
   <div class="card">
     <span class="t">الزر يفتح</span>
     <div class="chips" id="pOpen">
-      <button data-v="none">يسكّر بس</button><button data-v="offers">العروض</button><button data-v="latest">وصل حديثًا</button>
+      <button data-v="none">يسكّر بس</button><button data-v="offers">العروض</button><button data-v="latest">وصل حديثًا</button><button data-v="best">الأكثر مبيعًا</button>
       <button data-v="product">منتج</button><button data-v="category">قسم</button><button data-v="url">رابط</button>
     </div>
     <div class="row hide" id="pValBox"><input id="pVal" dir="ltr"><p class="hint" id="pValHint"></p></div>
@@ -190,8 +219,8 @@ var LS = {
   set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
 };
-function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(function () { el.classList.remove('show'); }, 2200); }
-function chips(id, onPick, attr) {
+function toast(t) { var e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(e._t); e._t = setTimeout(function () { e.classList.remove('show'); }, 2400); }
+function chips(id, onPick) {
   var btns = $(id).querySelectorAll('button');
   btns.forEach(function (b) {
     b.onclick = function () { btns.forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); onPick(b.getAttribute('data-v')); };
@@ -219,8 +248,8 @@ $('saveKey').onclick = function () { var k = $('keyIn').value.trim(); if (!k) re
 $('resetKey').onclick = function () { if (confirm('تبي تغيّر مفتاح OneSignal؟')) { LS.del(KEY); $('keyIn').value = ''; showKey(); } };
 var hints = {
   order: ['رقم الطلب', 'رقم الطلب الداخلي في سلة (من رابط صفحة الطلب).'],
-  product: ['رقم المنتج', 'من رابط المنتج في المتجر: الرقم بعد حرف p.'],
-  category: ['رقم القسم', 'من رابط القسم في المتجر: الرقم بعد حرف c.'],
+  product: ['رابط المنتج أو رقمه', 'الصق رابط المنتج من المتجر كامل.'],
+  category: ['رابط القسم أو رقمه', 'الصق رابط القسم من المتجر كامل.'],
   url: ['https://bronz-sa.com/...', 'أي رابط من متجر برونز — يفتح داخل التطبيق.']
 };
 chips('aud', function (v) { sendState.aud = v; $('custBox').classList.toggle('hide', v !== 'one'); });
@@ -247,7 +276,7 @@ $('send').onclick = function () {
   var customer = sendState.aud === 'one' ? $('cust').value.trim() : '';
   if (sendState.aud === 'one' && !customer) return result(false, 'اكتب رقم العميل.');
   var value = $('val').value.trim();
-  if (hints[sendState.open] && sendState.open !== 'url' && !value) return result(false, 'اكتب ' + hints[sendState.open][0] + '.');
+  if (hints[sendState.open] && !value) return result(false, 'اكتب ' + hints[sendState.open][0] + '.');
   if (sendState.aud === 'all' && !confirm('بيوصل الإشعار لكل العملاء. متأكد؟')) return;
   var btn = $('send'); btn.disabled = true; btn.textContent = 'جاري الإرسال…';
   fetch('/send', { method: 'POST', headers: { 'content-type': 'application/json', 'x-key': LS.get(KEY) },
@@ -264,78 +293,210 @@ $('send').onclick = function () {
 /* ───── الإعدادات (الرئيسية + البوب اب) ───── */
 var cfg = null, cats = [];
 var PIN = 'bronz_pin';
-function catName(id) { for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i].name; return 'قسم ' + id; }
+var SPECIAL = { latest: 'وصل حديثًا', best: 'الأكثر مبيعًا', rated: 'الأعلى تقييمًا', offers: 'العروض' };
+var ICONS = { offers: '%', latest: '✦', best: '★', rated: '♥', category: '🏷', product: '🛍', url: '🔗', none: '•' };
+var BLOCK_NAME = { banners: 'البانرات', features: 'شريط المزايا', circles: 'أيقونات', products: 'منتجات' };
+var LINK_NAME = { category: 'قسم', product: 'منتج', url: 'رابط من المتجر', offers: 'العروض', latest: 'وصل حديثًا', best: 'الأكثر مبيعًا', rated: 'الأعلى تقييمًا', none: 'بدون رابط' };
+function catName(id) { id = Number(id); for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i].name; return 'قسم ' + id; }
 
 function loadCfg() {
   if (cfg) return;
   Promise.all([fetch('/config').then(function (r) { return r.json(); }), fetch('/meta').then(function (r) { return r.json(); })])
-    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; renderHome(); fillPopup(); })
+    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; cfg.blocks = cfg.blocks || []; renderHome(); fillPopup(); })
     .catch(function () { toast('تعذّر تحميل الإعدادات'); });
 }
 
+function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function mkBtn(txt, fn, cls) { var b = el('button', cls || '', txt); b.onclick = fn; return b; }
 function move(list, i, d) { var j = i + d; if (j < 0 || j >= list.length) return; var t = list[i]; list[i] = list[j]; list[j] = t; renderHome(); }
-
-function mkBtn(txt, fn) { var b = document.createElement('button'); b.textContent = txt; b.onclick = fn; return b; }
-
-function renderList(boxId, list, isCircle) {
-  var box = $(boxId); box.innerHTML = '';
-  list.forEach(function (x, i) {
-    var row = document.createElement('div'); row.className = 'item' + (x.hidden ? ' off' : '');
-    if (isCircle) {
-      var th = document.createElement('div'); th.className = 'thumb' + (x.type === 'offers' ? ' dark' : '');
-      var inner = document.createElement('div');
-      if (x.image) inner.style.backgroundImage = 'url("' + x.image + '")';
-      else inner.textContent = x.type === 'offers' ? '%' : (x.type === 'latest' ? '✦' : '🏷');
-      th.appendChild(inner); row.appendChild(th);
-    }
-    var inp = document.createElement('input');
-    inp.value = isCircle ? (x.label || '') : (x.title || '');
-    inp.placeholder = x.type === 'category' ? catName(x.id) : (x.type === 'offers' ? 'العروض' : 'وصل حديثًا');
-    inp.oninput = function () { if (isCircle) x.label = inp.value; else x.title = inp.value; };
-    row.appendChild(inp);
-    var ctl = document.createElement('div'); ctl.className = 'ctl';
-    ctl.appendChild(mkBtn('↑', function () { move(list, i, -1); }));
-    ctl.appendChild(mkBtn('↓', function () { move(list, i, 1); }));
-    ctl.appendChild(mkBtn(x.hidden ? '🙈' : '👁', function () { x.hidden = !x.hidden; renderHome(); }));
-    if (isCircle) ctl.appendChild(mkBtn('🖼', function () { pickImage(x); }));
-    if (x.type === 'category') ctl.appendChild(mkBtn('✕', function () { if (confirm('حذف «' + (inp.value || catName(x.id)) + '»؟')) { list.splice(i, 1); renderHome(); } }));
-    row.appendChild(ctl);
-    box.appendChild(row);
+function opt(sel, v, t) { var o = el('option', '', t); o.value = v; sel.appendChild(o); return o; }
+function catSelect(value, onChange) {
+  var s = el('select'); opt(s, '', '— اختر قسم —');
+  cats.forEach(function (c) { opt(s, String(c.id), c.name); });
+  s.value = value ? String(value) : ''; s.onchange = function () { onChange(s.value); }; return s;
+}
+function segOf(options, value, onPick) {
+  var w = el('div', 'seg');
+  Object.keys(options).forEach(function (k) {
+    var b = el('button', String(value) === k ? 'on' : '', options[k]);
+    b.onclick = function () { onPick(k); }; w.appendChild(b);
   });
+  return w;
 }
 
-function fillSelect(id, list) {
-  var s = $(id); s.innerHTML = '<option value="">+ أضف قسم…</option>';
-  cats.forEach(function (c) {
-    var used = list.some(function (x) { return x.type === 'category' && x.id === c.id; });
-    if (!used) { var o = document.createElement('option'); o.value = c.id; o.textContent = c.name; s.appendChild(o); }
-  });
+function thumbOf(it) {
+  var th = el('div', 'thumb' + (it.link && it.link.to === 'offers' && !it.image ? ' dark' : ''));
+  var inner = el('div');
+  if (it.image) inner.style.backgroundImage = 'url("' + it.image + '")';
+  else inner.textContent = ICONS[(it.link && it.link.to) || 'none'] || '•';
+  th.appendChild(inner);
+  th.onclick = function () { openSheet(it); };
+  return th;
+}
+
+function renderIcon(list, it, i) {
+  var w = el('div', 'ic2');
+  var r1 = el('div', 'r1');
+  r1.appendChild(thumbOf(it));
+  var inp = el('input'); inp.value = it.label || ''; inp.placeholder = 'اسم الأيقونة';
+  inp.oninput = function () { it.label = inp.value; }; r1.appendChild(inp);
+  var ctl = el('div', 'ctl');
+  ctl.appendChild(mkBtn('↑', function () { move(list, i, -1); }));
+  ctl.appendChild(mkBtn('↓', function () { move(list, i, 1); }));
+  ctl.appendChild(mkBtn('✕', function () { if (confirm('حذف الأيقونة «' + (it.label || '') + '»؟')) { list.splice(i, 1); renderHome(); } }));
+  r1.appendChild(ctl); w.appendChild(r1);
+
+  var r2 = el('div', 'r2');
+  it.link = it.link || { to: 'none', value: '' };
+  var ls = el('select');
+  Object.keys(LINK_NAME).forEach(function (k) { opt(ls, k, LINK_NAME[k]); });
+  ls.value = it.link.to; r2.appendChild(ls);
+  var val;
+  if (it.link.to === 'category') {
+    val = catSelect(it.link.value, function (v) { it.link.value = v; if (!it.label) { it.label = catName(v); renderHome(); } });
+  } else if (it.link.to === 'product' || it.link.to === 'url') {
+    val = el('input'); val.dir = 'ltr'; val.value = it.link.value || '';
+    val.placeholder = it.link.to === 'product' ? 'رابط المنتج أو رقمه' : 'https://bronz-sa.com/...';
+    val.oninput = function () { it.link.value = val.value.trim(); };
+  }
+  if (val) r2.appendChild(val);
+  ls.onchange = function () {
+    it.link = { to: ls.value, value: '' };
+    if (!it.label && SPECIAL[ls.value]) it.label = SPECIAL[ls.value];
+    renderHome();
+  };
+  w.appendChild(r2);
+  return w;
+}
+
+function renderBlock(b, i) {
+  var card = el('div', 'card blk' + (b.hidden ? ' off' : ''));
+  var bh = el('div', 'bh');
+  bh.appendChild(el('span', 'badge', BLOCK_NAME[b.type] || b.type));
+  if (b.type === 'circles' || b.type === 'products') {
+    var t = el('input'); t.value = b.title || '';
+    t.placeholder = b.type === 'circles' ? 'عنوان (اختياري)' : 'عنوان الصف';
+    t.oninput = function () { b.title = t.value; }; bh.appendChild(t);
+  } else bh.appendChild(el('span', 'hint', b.type === 'banners' ? 'من لوحة سلة تلقائيًا' : 'أصلي · شحن سريع · دفع آمن'));
+  var ctl = el('div', 'ctl');
+  ctl.appendChild(mkBtn('↑', function () { move(cfg.blocks, i, -1); }));
+  ctl.appendChild(mkBtn('↓', function () { move(cfg.blocks, i, 1); }));
+  ctl.appendChild(mkBtn(b.hidden ? '🙈' : '👁', function () { b.hidden = !b.hidden; renderHome(); }));
+  ctl.appendChild(mkBtn('✕', function () { if (confirm('حذف قطعة «' + (b.title || BLOCK_NAME[b.type]) + '»؟')) { cfg.blocks.splice(i, 1); renderHome(); } }));
+  bh.appendChild(ctl); card.appendChild(bh);
+
+  if (b.type === 'circles') {
+    var sub = el('div', 'sub');
+    sub.appendChild(segOf({ 1: 'صف واحد', 2: 'صفين', 3: 'شبكة كاملة' }, b.rows || 1, function (k) { b.rows = Number(k); renderHome(); }));
+    var list = el('div', 'row');
+    b.items = b.items || [];
+    b.items.forEach(function (it, j) { list.appendChild(renderIcon(b.items, it, j)); });
+    sub.appendChild(list);
+    sub.appendChild(mkBtn('＋ أيقونة جديدة', function () {
+      b.items.push({ label: '', image: '', link: { to: 'category', value: '' } }); renderHome();
+    }, 'btn2 wide'));
+    card.appendChild(sub);
+  }
+  if (b.type === 'products') {
+    var sp = el('div', 'sub mini');
+    var src = el('select');
+    Object.keys(SPECIAL).forEach(function (k) { opt(src, k, '★ ' + SPECIAL[k]); });
+    cats.forEach(function (c) { opt(src, 'c' + c.id, c.name); });
+    src.value = b.source === 'category' ? 'c' + b.id : b.source;
+    src.onchange = function () {
+      var v = src.value, prev = b.source === 'category' ? catName(b.id) : SPECIAL[b.source];
+      if (v[0] === 'c') { b.source = 'category'; b.id = Number(v.slice(1)); } else { b.source = v; b.id = undefined; }
+      if (!b.title || b.title === prev) b.title = b.source === 'category' ? catName(b.id) : SPECIAL[b.source];
+      renderHome();
+    };
+    sp.appendChild(src);
+    var lim = el('select');
+    [4, 6, 8, 10, 12, 16, 20, 30].forEach(function (n) { opt(lim, n, n + ' منتج'); });
+    lim.value = String(b.limit || 10); lim.onchange = function () { b.limit = Number(lim.value); };
+    sp.appendChild(lim);
+    card.appendChild(sp);
+    var st = el('div', 'row');
+    st.appendChild(segOf({ rail: '▤ صف أفقي', grid: '▦ شبكة عمودين' }, b.style || 'rail', function (k) { b.style = k; renderHome(); }));
+    card.appendChild(st);
+  }
+  return card;
 }
 
 function renderHome() {
-  renderList('circles', cfg.circles, true); renderList('rails', cfg.rails, false);
-  fillSelect('addCircle', cfg.circles); fillSelect('addRail', cfg.rails);
+  var box = $('blocks'); box.innerHTML = '';
+  cfg.blocks.forEach(function (b, i) { box.appendChild(renderBlock(b, i)); });
+  var has = function (t) { return cfg.blocks.some(function (b) { return b.type === t; }); };
+  document.querySelectorAll('#addBlock button').forEach(function (btn) {
+    var t = btn.getAttribute('data-v');
+    btn.classList.toggle('hide', (t === 'banners' || t === 'features') && has(t));
+  });
 }
-$('addCircleBtn').onclick = function () { var id = Number($('addCircle').value); if (!id) return; cfg.circles.push({ type: 'category', id: id, label: catName(id) }); renderHome(); };
-$('addRailBtn').onclick = function () { var id = Number($('addRail').value); if (!id) return; cfg.rails.push({ type: 'category', id: id, title: catName(id) }); renderHome(); };
+document.querySelectorAll('#addBlock button').forEach(function (btn) {
+  btn.onclick = function () {
+    if (!cfg) return;
+    var t = btn.getAttribute('data-v'), b = { type: t };
+    if (t === 'circles') { b.rows = 1; b.title = ''; b.items = [{ label: '', image: '', link: { to: 'category', value: '' } }]; }
+    if (t === 'products') { b.source = 'best'; b.title = 'الأكثر مبيعًا'; b.style = 'rail'; b.limit = 10; }
+    cfg.blocks.push(b); renderHome(); toast('انضافت «' + BLOCK_NAME[t] + '» تحت — رتّبها بالأسهم');
+    setTimeout(function () { var l = $('blocks').lastChild; if (l) l.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+  };
+});
 
+/* ───── الصور: رفع / رابط ───── */
 function fetchImage(link) {
   link = (link || '').trim();
   if (!link) return Promise.resolve('');
-  if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(link) || /cdn\.salla|salla\.sa\/.*\.(png|jpg|webp)/i.test(link)) return Promise.resolve(link);
+  if (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(link) || /cdn\.salla|\/m\//i.test(link)) return Promise.resolve(link);
   return fetch('/og?url=' + encodeURIComponent(link)).then(function (r) { return r.json(); }).then(function (o) {
     if (!o.image) throw new Error(o.error || 'ما لقيت صورة في الرابط');
     return o.image;
   });
 }
-
-function pickImage(x) {
-  var link = prompt('الصق رابط منتج من المتجر (أو رابط صورة).\nخلّه فاضي لإرجاع الصورة التلقائية.', '');
-  if (link === null) return;
-  if (!link.trim()) { x.image = ''; renderHome(); return; }
-  toast('جاري جلب الصورة…');
-  fetchImage(link).then(function (img) { x.image = img; renderHome(); toast('تم ✓'); }).catch(function (e) { toast(e.message); });
+function resize(file, max) {
+  return new Promise(function (ok, bad) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var k = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      var g = c.getContext('2d');
+      var png = file.type === 'image/png';
+      if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
+      g.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(function (b) { b ? ok(b) : bad(new Error('تعذّر تجهيز الصورة')); }, png ? 'image/png' : 'image/jpeg', 0.86);
+    };
+    img.onerror = function () { bad(new Error('الصورة غير مدعومة')); };
+    img.src = url;
+  });
 }
+function uploadFile(file, max) {
+  var pin = askPin(); if (!pin) return Promise.reject(new Error('لازم الرمز السري'));
+  toast('جاري رفع الصورة…');
+  return resize(file, max).then(function (blob) {
+    return fetch('/upload', { method: 'POST', headers: { 'content-type': blob.type, 'x-pin': pin }, body: blob });
+  }).then(function (r) { return r.json().then(function (o) {
+    if (r.status === 403) { LS.del(PIN); throw new Error('الرمز السري غير صحيح'); }
+    if (!r.ok || !o.url) throw new Error(o.error || 'ما انرفعت');
+    return o.url;
+  }); });
+}
+var sheetTarget = null, fileCb = null;
+function openSheet(it) { sheetTarget = it; $('sheet').classList.remove('hide'); }
+function closeSheet() { $('sheet').classList.add('hide'); }
+$('shCancel').onclick = closeSheet;
+$('sheet').onclick = function (e) { if (e.target === $('sheet')) closeSheet(); };
+$('shClear').onclick = function () { if (sheetTarget) sheetTarget.image = ''; closeSheet(); renderHome(); };
+$('shLink').onclick = function () {
+  var it = sheetTarget; closeSheet();
+  var link = prompt('الصق رابط منتج من المتجر أو رابط صورة:', ''); if (!link) return;
+  toast('جاري جلب الصورة…');
+  fetchImage(link).then(function (img) { it.image = img; renderHome(); toast('تم ✓ — لا تنسى «حفظ ونشر»'); }).catch(function (e) { toast(e.message); });
+};
+function pickFile(cb) { fileCb = cb; $('fileIn').value = ''; $('fileIn').click(); }
+$('fileIn').onchange = function () { var f = $('fileIn').files[0]; if (f && fileCb) fileCb(f); };
+$('shUpload').onclick = function () {
+  var it = sheetTarget; closeSheet();
+  pickFile(function (f) { uploadFile(f, 600).then(function (u) { it.image = u; renderHome(); toast('انرفعت ✓ — لا تنسى «حفظ ونشر»'); }).catch(function (e) { toast(e.message); }); });
+};
 
 /* ───── البوب اب ───── */
 var pop = {};
@@ -345,8 +506,10 @@ function popVal() {
   var h = hints[pop.open]; $('pValBox').classList.toggle('hide', !h);
   if (h) { $('pVal').placeholder = h[0]; $('pValHint').textContent = h[1]; }
 }
+var popSnap = '';
+function popKey(o) { return JSON.stringify([o.image, o.title, o.body, o.button, o.open, o.value, o.freq, o.active]); }
 function fillPopup() {
-  pop = cfg.popup || {};
+  pop = JSON.parse(JSON.stringify(cfg.popup || {})); popSnap = popKey(pop);
   $('pActive').checked = !!pop.active; $('pLink').value = pop.image || ''; $('pTitle').value = pop.title || '';
   $('pBody').value = pop.body || ''; $('pBtn').value = pop.button || ''; $('pVal').value = pop.value || '';
   setPOpen(pop.open || 'none'); setPFreq(pop.freq || 'once'); popVal(); popPreview();
@@ -361,6 +524,10 @@ function popPreview() {
   $('ppImg').style.backgroundImage = img ? 'url("' + img + '")' : '';
 }
 ['pTitle', 'pBody', 'pBtn'].forEach(function (id) { $(id).oninput = popPreview; });
+$('pUpload').onclick = function () {
+  pickFile(function (f) { uploadFile(f, 1200).then(function (u) { pop.image = u; $('pLink').value = u; popPreview(); toast('انرفعت ✓'); }).catch(function (e) { toast(e.message); }); });
+};
+$('pClear').onclick = function () { pop.image = ''; $('pLink').value = ''; popPreview(); };
 $('pFetch').onclick = function () {
   toast('جاري جلب الصورة…');
   fetchImage($('pLink').value).then(function (img) { pop.image = img; $('pLink').value = img; popPreview(); toast(img ? 'تم ✓' : 'تمت إزالة الصورة'); })
@@ -379,22 +546,18 @@ $('lockBtn').onclick = function () { LS.del(PIN); LS.del(KEY); showKey(); toast(
 $('saveCfg').onclick = function () {
   if (!cfg) return;
   var pin = askPin(); if (!pin) return toast('لازم رمز سري للحفظ');
-  if (tab === 'popup') {
-    var before = JSON.stringify([cfg.popup.image, cfg.popup.title, cfg.popup.body, cfg.popup.button, cfg.popup.open, cfg.popup.value, cfg.popup.freq, cfg.popup.active]);
-    pop.active = $('pActive').checked; pop.title = $('pTitle').value; pop.body = $('pBody').value;
-    pop.button = $('pBtn').value; pop.value = $('pVal').value;
-    if (!pop.image && /^https?:/.test($('pLink').value.trim())) pop.image = $('pLink').value.trim();
-    var after = JSON.stringify([pop.image, pop.title, pop.body, pop.button, pop.open, pop.value, pop.freq, pop.active]);
-    if (before !== after || !pop.id) pop.id = String(Date.now());
-    cfg.popup = pop;
-    if (pop.active && !pop.title.trim() && !pop.body.trim() && !pop.image) return toast('أضف صورة أو عنوان أو نص');
-  }
+  pop.active = $('pActive').checked; pop.title = $('pTitle').value; pop.body = $('pBody').value;
+  pop.button = $('pBtn').value; pop.value = $('pVal').value;
+  if (!pop.image && /^https?:/.test($('pLink').value.trim())) pop.image = $('pLink').value.trim();
+  if (popKey(pop) !== popSnap || !pop.id) pop.id = String(Date.now());
+  if (pop.active && !pop.title.trim() && !pop.body.trim() && !pop.image) return toast('البوب اب: أضف صورة أو عنوان أو نص');
+  cfg.popup = pop;
   var btn = $('saveCfg'); btn.disabled = true; btn.textContent = 'جاري الحفظ…';
   fetch('/config', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': pin }, body: JSON.stringify(cfg) })
     .then(function (r) { return r.json().then(function (o) {
       if (r.status === 403) { LS.del(PIN); toast('الرمز السري غير صحيح'); return; }
       if (!r.ok) { toast(o.error || 'ما انحفظ'); return; }
-      cfg = o.config; renderHome(); fillPopup(); toast('انحفظ ✓ — يظهر عند العملاء خلال دقيقة');
+      cfg = o.config; renderHome(); fillPopup(); toast('انحفظ ✓ — سكّر التطبيق وافتحه تشوفه');
     }); })
     .catch(function () { toast('تعذّر الاتصال'); })
     .then(function () { btn.disabled = false; btn.textContent = 'حفظ ونشر للتطبيق'; });
