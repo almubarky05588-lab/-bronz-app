@@ -1,6 +1,7 @@
 class Product {
   final int id;
   final String name;
+  final String brand;
   final double price;
   final double? oldPrice;
   final String image;
@@ -12,6 +13,7 @@ class Product {
   const Product({
     required this.id,
     required this.name,
+    this.brand = '',
     required this.price,
     this.oldPrice,
     required this.image,
@@ -20,6 +22,26 @@ class Product {
     required this.url,
     required this.available,
   });
+
+  /// منتج مبدئي برقمه فقط (تكمل صفحة المنتج تفاصيله من المتجر)
+  factory Product.stub(int id) => Product(
+        id: id,
+        name: '',
+        price: 0,
+        image: '',
+        images: const [],
+        description: '',
+        url: '',
+        available: true,
+      );
+
+  /// نسبة الخصم الفعلية (مثل 35)
+  int? get discountPercent {
+    final o = oldPrice;
+    if (o == null || o <= 0 || o <= price) return null;
+    final p = (((o - price) / o) * 100).round();
+    return p > 0 ? p : null;
+  }
 
   static double? _num(dynamic v) {
     if (v == null) return null;
@@ -33,6 +55,12 @@ class Product {
     if (v == null) return '';
     if (v is String) return v;
     if (v is Map) return '${v['url'] ?? v['original'] ?? v['thumbnail'] ?? ''}';
+    return '';
+  }
+
+  static String _brand(dynamic v) {
+    if (v is Map) return '${v['name'] ?? ''}'.trim();
+    if (v is String) return v.trim();
     return '';
   }
 
@@ -61,6 +89,7 @@ class Product {
     return Product(
       id: int.tryParse('${j['id']}') ?? 0,
       name: '${j['name'] ?? ''}'.trim(),
+      brand: _brand(j['brand']),
       price: current,
       oldPrice: (regular != null && regular > current) ? regular : null,
       image: image,
@@ -71,9 +100,22 @@ class Product {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'brand': brand,
+        'price': price,
+        'regular_price': oldPrice,
+        'image': image,
+        'images': images,
+        'url': url,
+        'is_available': available,
+      };
+
   Product mergedWith(Product fallback) => Product(
         id: id != 0 ? id : fallback.id,
         name: name.isNotEmpty ? name : fallback.name,
+        brand: brand.isNotEmpty ? brand : fallback.brand,
         price: price > 0 ? price : fallback.price,
         oldPrice: oldPrice ?? fallback.oldPrice,
         image: image.isNotEmpty ? image : fallback.image,

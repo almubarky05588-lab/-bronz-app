@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/product.dart';
+import '../core/theme.dart';
 import 'common.dart';
 import 'product_card.dart';
 
@@ -70,18 +72,24 @@ class _ProductGridState extends State<ProductGrid> {
     await _load();
   }
 
+  static const _delegate = SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    mainAxisSpacing: 12,
+    crossAxisSpacing: 12,
+    childAspectRatio: 0.58,
+  );
+
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty && _loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_items.isEmpty && _error != null) {
+    if (_items.isEmpty && _error != null && !_loading) {
       return ErrorView(message: '$_error', onRetry: _load);
     }
     if (_items.isEmpty && _done) {
-      return const EmptyView(icon: Icons.inventory_2_outlined, message: 'لا توجد منتجات');
+      return EmptyView(icon: PhosphorIcons.package(), message: 'لا توجد منتجات هنا حاليًا');
     }
+    final skeleton = _items.isEmpty && _loading;
     return RefreshIndicator(
+      color: BronzColors.ink,
       onRefresh: _refresh,
       child: CustomScrollView(
         controller: _scroll,
@@ -89,26 +97,32 @@ class _ProductGridState extends State<ProductGrid> {
         slivers: [
           if (widget.header != null) SliverToBoxAdapter(child: widget.header),
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
-                (c, i) => ProductCard(product: _items[i]),
-                childCount: _items.length,
+                (c, i) => skeleton
+                    ? Container(
+                        decoration: BoxDecoration(
+                          color: BronzColors.tile,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      )
+                    : ProductCard(product: _items[i]),
+                childCount: skeleton ? 6 : _items.length,
               ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.62,
-              ),
+              gridDelegate: _delegate,
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 32),
               child: Center(
-                child: _loading
-                    ? const CircularProgressIndicator()
+                child: _loading && !skeleton
+                    ? const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(strokeWidth: 2.4, color: BronzColors.ink),
+                      )
                     : _error != null
                         ? TextButton(onPressed: _load, child: const Text('إعادة المحاولة'))
                         : const SizedBox.shrink(),

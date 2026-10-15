@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/cart.dart';
+import 'core/favorites.dart';
 import 'core/store_bridge.dart';
 import 'core/theme.dart';
 import 'screens/shell.dart';
@@ -14,7 +15,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-  await Cart.instance.load();
+  await Future.wait([Cart.instance.load(), Favorites.instance.load()]);
   runApp(const BronzApp());
 }
 
@@ -34,10 +35,11 @@ class BronzApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // طبقة الربط المخفية مع المتجر تعمل خلف الواجهة طوال عمر التطبيق
+      // طبقة الربط المخفية: صفحة المتجر بمقاس جوال كامل (حتى تُحمَّل البانرات
+      // والصور بشكل طبيعي) لكنها شفافة وخلف الواجهة ولا تستقبل أي لمسة
       builder: (context, child) => Stack(
         children: [
-          const Positioned(left: 0, top: 0, width: 1, height: 1, child: StoreBridgeHost()),
+          const Positioned(left: 0, top: 0, width: 400, height: 860, child: StoreBridgeHost()),
           if (child != null) Positioned.fill(child: child),
         ],
       ),
@@ -69,8 +71,7 @@ class _LaunchState extends State<_Launch> {
     final started = DateTime.now();
     try {
       await StoreBridge.instance.waitReady(seconds: 12);
-      // مهلة قصيرة حتى تصل أول بيانات الرئيسية من المتجر
-      await Future.delayed(const Duration(milliseconds: 900));
+      await Future.delayed(const Duration(milliseconds: 1100));
     } catch (_) {
       // لو تأخر المتجر نكمل؛ الرئيسية تعرض حالة إعادة المحاولة بنفسها
     }
@@ -87,7 +88,7 @@ class _LaunchState extends State<_Launch> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const Positioned.fill(child: Shell()),
+        const Positioned.fill(child: ColoredBox(color: BronzColors.bg, child: Shell())),
         if (!_removeSplash)
           Positioned.fill(
             child: IgnorePointer(

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
+import '../core/theme.dart';
+import 'account_screen.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
 import 'home_screen.dart';
-import 'search_screen.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -16,43 +19,128 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _index = 0;
 
+  void _go(int i) {
+    if (i == _index) return;
+    HapticFeedback.selectionClick();
+    setState(() => _index = i);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [HomeScreen(), CategoriesScreen(), SearchScreen(), CartScreen()],
+        children: const [HomeScreen(), CategoriesScreen(), CartScreen(), AccountScreen()],
       ),
-      bottomNavigationBar: ListenableBuilder(
-        listenable: Cart.instance,
-        builder: (context, _) {
-          final count = Cart.instance.count;
-          return NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: (v) => setState(() => _index = v),
-            destinations: [
-              const NavigationDestination(
-                  icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'الرئيسية'),
-              const NavigationDestination(
-                  icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view), label: 'الأقسام'),
-              const NavigationDestination(
-                  icon: Icon(Icons.search), selectedIcon: Icon(Icons.search), label: 'البحث'),
-              NavigationDestination(
-                icon: Badge(
-                  isLabelVisible: count > 0,
-                  label: Text('$count'),
-                  child: const Icon(Icons.shopping_bag_outlined),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Container(
+            height: 68,
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: BronzColors.line),
+              boxShadow: const [
+                BoxShadow(color: Color(0x14000000), blurRadius: 24, offset: Offset(0, 8)),
+              ],
+            ),
+            child: ListenableBuilder(
+              listenable: Cart.instance,
+              builder: (context, _) => Row(
+                children: [
+                  _NavItem(
+                    label: 'الرئيسية',
+                    icon: PhosphorIcons.house(),
+                    activeIcon: PhosphorIcons.house(PhosphorIconsStyle.fill),
+                    selected: _index == 0,
+                    onTap: () => _go(0),
+                  ),
+                  _NavItem(
+                    label: 'الأقسام',
+                    icon: PhosphorIcons.squaresFour(),
+                    activeIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+                    selected: _index == 1,
+                    onTap: () => _go(1),
+                  ),
+                  _NavItem(
+                    label: 'السلة',
+                    icon: PhosphorIcons.handbag(),
+                    activeIcon: PhosphorIcons.handbag(PhosphorIconsStyle.fill),
+                    selected: _index == 2,
+                    badge: Cart.instance.count,
+                    onTap: () => _go(2),
+                  ),
+                  _NavItem(
+                    label: 'حسابي',
+                    icon: PhosphorIcons.user(),
+                    activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
+                    selected: _index == 3,
+                    onTap: () => _go(3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  final bool selected;
+  final int badge;
+  final VoidCallback onTap;
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    required this.selected,
+    required this.onTap,
+    this.badge = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: selected ? BronzColors.soft : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Badge(
+                isLabelVisible: badge > 0,
+                backgroundColor: BronzColors.ink,
+                textColor: Colors.white,
+                label: Text('$badge', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                child: Icon(selected ? activeIcon : icon, size: 23, color: BronzColors.ink),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  color: selected ? BronzColors.ink : BronzColors.muted,
                 ),
-                selectedIcon: Badge(
-                  isLabelVisible: count > 0,
-                  label: Text('$count'),
-                  child: const Icon(Icons.shopping_bag),
-                ),
-                label: 'السلة',
               ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }

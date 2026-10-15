@@ -1,37 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/catalog.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
+import '../widgets/banner_carousel.dart';
+import '../widgets/category_cover.dart';
+import '../widgets/common.dart';
 import '../widgets/product_rail.dart';
 import 'category_screen.dart';
-
-/// شعار برونز الأصلي مفرّغًا: الخلفية البيضاء تذوب في لون الشاشة
-/// (دمج بالضرب Multiply) فلا يبقى إلا الشعار الأسود بالتاج،
-/// والإطار يقص المساحة الفارغة حوله.
-class BronzLogo extends StatelessWidget {
-  final double width;
-  const BronzLogo({super.key, this.width = 150});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: width * 0.30,
-      child: ClipRect(
-        child: Image.asset(
-          'assets/branding/BRONZ_app_icon_4096.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          color: BronzColors.bg,
-          colorBlendMode: BlendMode.multiply,
-          filterQuality: FilterQuality.high,
-          cacheWidth: 1024,
-        ),
-      ),
-    );
-  }
-}
+import 'search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -40,80 +18,179 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
   }
 
+  void _list(BuildContext context, String title, Future<List<dynamic>> Function(int) _) {}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Center(child: BronzLogo(width: 150)),
-            ),
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF111111), Color(0xFF3A2E22)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // ─── الرأس: الشعار + الإشعارات ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Row(
                 children: [
-                  Text('عطور أصلية 100%',
-                      style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-                  SizedBox(height: 6),
-                  Text('أشهر الماركات العالمية بضمان متجر برونز\nوشحن سريع لجميع مدن السعودية',
-                      style: TextStyle(color: Color(0xFFE6D9C6), height: 1.5)),
+                  const BronzLogo(width: 120),
+                  const Spacer(),
+                  RoundIcon(
+                    icon: PhosphorIcons.bell(),
+                    onTap: () => showBronzToast(
+                      context,
+                      'لا توجد إشعارات جديدة',
+                      icon: PhosphorIcons.bellSimple(PhosphorIconsStyle.fill),
+                    ),
+                  ),
                 ],
               ),
             ),
-            SizedBox(
-              height: 96,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: allCategories.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (context, i) {
-                  final c = allCategories[i];
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => _open(context, c),
-                    child: SizedBox(
-                      width: 72,
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.white,
-                            child: Icon(c.icon, color: BronzColors.ink),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(c.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+            // ─── شريط البحث ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SearchScreen(autofocus: true)),
+                ),
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: BronzColors.line),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(PhosphorIcons.magnifyingGlass(), size: 21, color: BronzColors.muted),
+                      const SizedBox(width: 10),
+                      const Text('ابحث عن عطر، ماركة، أو منتج…',
+                          style: TextStyle(color: BronzColors.muted, fontSize: 14.5)),
+                    ],
+                  ),
+                ),
               ),
             ),
-            ProductRail(title: 'وصل حديثًا', loader: () => StoreApi.latest()),
+            // ─── البانرات ───
+            const BannerCarousel(),
+            const SizedBox(height: 20),
+            // ─── دوائر الأقسام ───
+            SizedBox(
+              height: 112,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  _Circle(
+                    label: 'العروض',
+                    icon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
+                    dark: true,
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ProductListScreen(
+                        title: 'العروض',
+                        loader: (p) => StoreApi.offers(page: p),
+                      ),
+                    )),
+                  ),
+                  _Circle(
+                    label: 'وصل حديثًا',
+                    icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => ProductListScreen(
+                        title: 'وصل حديثًا',
+                        loader: (p) => StoreApi.latest(page: p),
+                      ),
+                    )),
+                  ),
+                  for (final c in allCategories)
+                    _Circle(label: c.name, categoryId: c.id, onTap: () => _open(context, c)),
+                ],
+              ),
+            ),
+            // ─── صفوف المنتجات ───
+            ProductRail(
+              title: 'وصل حديثًا',
+              loader: () => StoreApi.latest(),
+              onMore: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ProductListScreen(
+                  title: 'وصل حديثًا',
+                  loader: (p) => StoreApi.latest(page: p),
+                ),
+              )),
+            ),
+            ProductRail(
+              title: 'أقوى العروض',
+              loader: () => StoreApi.offers(),
+              onMore: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => ProductListScreen(
+                  title: 'العروض',
+                  loader: (p) => StoreApi.offers(page: p),
+                ),
+              )),
+            ),
             for (final c in homeSections)
               ProductRail(
                 title: c.name,
                 loader: () => StoreApi.byCategory(c.id),
                 onMore: () => _open(context, c),
               ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Circle extends StatelessWidget {
+  final String label;
+  final int? categoryId;
+  final IconData? icon;
+  final bool dark;
+  final VoidCallback onTap;
+  const _Circle({
+    required this.label,
+    required this.onTap,
+    this.categoryId,
+    this.icon,
+    this.dark = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 84,
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: BronzColors.goldSoft, width: 1.4),
+              ),
+              child: ClipOval(
+                child: categoryId != null
+                    ? CategoryCover(categoryId: categoryId!, padding: 9)
+                    : Container(
+                        color: dark ? BronzColors.ink : Colors.white,
+                        alignment: Alignment.center,
+                        child: Icon(icon, size: 28, color: dark ? BronzColors.gold : BronzColors.ink),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),

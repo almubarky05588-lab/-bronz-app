@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/theme.dart';
 
@@ -13,11 +14,10 @@ const splashAsset = 'assets/branding/BRONZ_splash_graphite.png';
 OverlayEntry? _toastEntry;
 
 /// تنبيه صغير أسود ينزل من أعلى الشاشة ويختفي لحاله بعد ثانيتين.
-/// لا يلحق العميل بين الشاشات ولا يغطي أزرار الصفحة.
 void showBronzToast(
   BuildContext context,
   String message, {
-  IconData icon = Icons.check_circle_rounded,
+  IconData? icon,
   String? actionLabel,
   VoidCallback? onAction,
 }) {
@@ -31,7 +31,7 @@ void showBronzToast(
   entry = OverlayEntry(
     builder: (_) => _BronzToast(
       message: message,
-      icon: icon,
+      icon: icon ?? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
       actionLabel: actionLabel,
       onAction: onAction,
       onDone: () {
@@ -112,7 +112,7 @@ class _BronzToastState extends State<_BronzToast> with SingleTickerProviderState
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: BronzColors.ink,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
                   boxShadow: const [
                     BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 6)),
                   ],
@@ -162,8 +162,6 @@ class _BronzToastState extends State<_BronzToast> with SingleTickerProviderState
 
 // ───────── الشاشة الافتتاحية داخل التطبيق ─────────
 
-/// نفس رسم الشاشة الافتتاحية الأصلية — يبقى ظاهرًا حتى يجهز المتجر في الخلفية،
-/// فينتقل العميل من الشاشة الافتتاحية مباشرة إلى رئيسية مكتملة.
 class BrandSplash extends StatelessWidget {
   const BrandSplash({super.key});
 
@@ -182,31 +180,67 @@ class BrandSplash extends StatelessWidget {
   }
 }
 
+/// شعار برونز الأصلي مفرّغًا: الخلفية البيضاء تذوب في لون الشاشة
+/// (دمج بالضرب Multiply) فلا يبقى إلا الشعار الأسود بالتاج.
+class BronzLogo extends StatelessWidget {
+  final double width;
+  final Color background;
+  const BronzLogo({super.key, this.width = 150, this.background = BronzColors.bg});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: width * 0.30,
+      child: ClipRect(
+        child: Image.asset(
+          'assets/branding/BRONZ_app_icon_4096.png',
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          color: background,
+          colorBlendMode: BlendMode.multiply,
+          filterQuality: FilterQuality.high,
+          cacheWidth: 1024,
+        ),
+      ),
+    );
+  }
+}
+
 // ───────── عناصر عامة ─────────
 
 class NetImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
-  const NetImage(this.url, {super.key, this.fit = BoxFit.contain});
+  final double padding;
+  final Color background;
+  const NetImage(
+    this.url, {
+    super.key,
+    this.fit = BoxFit.contain,
+    this.padding = 6,
+    this.background = Colors.white,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) {
       return Container(
-        color: BronzColors.soft,
-        child: const Icon(Icons.image_outlined, color: BronzColors.muted),
+        color: background,
+        alignment: Alignment.center,
+        child: Icon(PhosphorIcons.image(), color: const Color(0xFFCFC8BE), size: 28),
       );
     }
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(6),
+      color: background,
+      padding: EdgeInsets.all(padding),
       child: CachedNetworkImage(
         imageUrl: url,
         fit: fit,
         fadeInDuration: const Duration(milliseconds: 180),
-        placeholder: (_, __) => Container(color: const Color(0xFFF7F5F2)),
-        errorWidget: (_, __, ___) => const Center(
-          child: Icon(Icons.image_not_supported_outlined, color: BronzColors.muted),
+        placeholder: (_, __) => const SizedBox.shrink(),
+        errorWidget: (_, __, ___) => Center(
+          child: Icon(PhosphorIcons.imageBroken(), color: const Color(0xFFCFC8BE)),
         ),
       ),
     );
@@ -230,7 +264,7 @@ class ErrorView extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: const BoxDecoration(color: BronzColors.soft, shape: BoxShape.circle),
-              child: const Icon(Icons.wifi_off_rounded, size: 32, color: BronzColors.ink),
+              child: Icon(PhosphorIcons.wifiSlash(), size: 30, color: BronzColors.ink),
             ),
             const SizedBox(height: 16),
             Text(message, textAlign: TextAlign.center, style: const TextStyle(height: 1.6)),
@@ -261,11 +295,36 @@ class EmptyView extends StatelessWidget {
             width: 84,
             height: 84,
             decoration: const BoxDecoration(color: BronzColors.soft, shape: BoxShape.circle),
-            child: Icon(icon, size: 36, color: BronzColors.ink),
+            child: Icon(icon, size: 34, color: BronzColors.ink),
           ),
           const SizedBox(height: 16),
           Text(message, style: const TextStyle(color: BronzColors.muted, fontSize: 15)),
         ],
+      ),
+    );
+  }
+}
+
+/// زر دائري أبيض بأيقونة (الإشعارات، الرجوع…)
+class RoundIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final double size;
+  const RoundIcon({super.key, required this.icon, required this.onTap, this.size = 46});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: BronzColors.line),
+        ),
+        child: Icon(icon, size: size * 0.46, color: BronzColors.ink),
       ),
     );
   }
@@ -303,12 +362,12 @@ class QtyStepper extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _btn(Icons.add_rounded, () => onChanged(value + 1)),
+          _btn(PhosphorIcons.plus(), () => onChanged(value + 1)),
           SizedBox(
             width: 26,
             child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
           ),
-          _btn(Icons.remove_rounded, value > min ? () => onChanged(value - 1) : null),
+          _btn(value <= 1 && min == 0 ? PhosphorIcons.trash() : PhosphorIcons.minus(), value > min ? () => onChanged(value - 1) : null),
         ],
       ),
     );

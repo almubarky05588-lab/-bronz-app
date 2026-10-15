@@ -44,3 +44,34 @@ const allCategories = <StoreCategory>[
 ];
 
 const homeSections = <StoreCategory>[menPerfumes, womenPerfumes, oud, cosmetics, care];
+
+/// روابط أقسام المتجر (slug) → رقم القسم — لفتح البانرات داخل التطبيق.
+const categorySlugs = <String, int>{
+  'ZPXadx': 952945814,
+  'qYKOzn': 666982592,
+  'DYBEBD': 1935632650,
+  'zZwVjR': 1723150419,
+  'WGobXN': 1590276103,
+  'mgwaQo': 971641143,
+  'qYKVpn': 769323888,
+  'NDgVPa': 315372818,
+  'zZxbdr': 1860677013,
+  'ZPKpVZ': 2020370844,
+  'BqZVQl': 636667848,
+  'rxOEpp': 2011162313,
+  'ODWgxm': 886820816,
+  'yAXyNP': 1783479303,
+  'bZPBYb': 111210193,
+  'XqPeOV': 781738507,
+  'lZZVZn': 138908188,
+};
+
+StoreCategory? findCategory(int id) {
+  for (final c in allCategories) {
+    if (c.id == id) return c;
+    for (final s in c.children) {
+      if (s.id == id) return s;
+    }
+  }
+  return null;
+}

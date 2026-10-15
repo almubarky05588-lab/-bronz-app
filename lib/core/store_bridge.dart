@@ -14,8 +14,8 @@ class StoreError implements Exception {
 }
 
 /// طبقة الربط: صفحة المتجر تعمل مخفية تمامًا خلف التطبيق، ونستدعي منها
-/// مكتبة سلة الرسمية (Twilight SDK) مباشرة: المنتجات، التفاصيل، تسجيل الدخول
-/// برمز التحقق، تعبئة السلة، وجلب رابط صفحة الدفع — كل ذلك كبيانات JSON.
+/// مكتبة سلة الرسمية (Twilight SDK) مباشرة: المنتجات، التفاصيل، البانرات،
+/// تسجيل الدخول برمز التحقق، تعبئة السلة، وجلب رابط صفحة الدفع.
 class StoreBridge {
   StoreBridge._();
   static final StoreBridge instance = StoreBridge._();
@@ -147,6 +147,16 @@ class StoreBridge {
     return c.items || [];
   }
 
+  function imgSrc(img){
+    var s = img.getAttribute('data-src') || img.currentSrc || img.src || '';
+    if (!s || s.indexOf('data:') === 0) {
+      var ss = img.getAttribute('data-srcset') || img.getAttribute('srcset') || '';
+      if (ss) s = ss.split(',').pop().trim().split(' ')[0];
+    }
+    if (s && s.indexOf('//') === 0) s = 'https:' + s;
+    return s;
+  }
+
   var A = {
     request: async function(a){ return unwrap(await salla.api.request(a.path, null, 'get')); },
 
@@ -161,6 +171,30 @@ class StoreBridge {
 
     details: async function(a){
       return await salla.api.product.getDetails(a.id, ['images', 'brand', 'rating', 'category']);
+    },
+
+    banners: async function(){
+      await new Promise(function(r){ setTimeout(r, 700); });
+      var skip = 'header, footer, salla-products-slider, salla-products-list, salla-product-card, custom-salla-product-card, .s-product-card-entry, .product-entry, salla-add-product-button';
+      var imgs = document.querySelectorAll('img');
+      var out = [], seen = {};
+      for (var i = 0; i < imgs.length && out.length < 8; i++) {
+        var img = imgs[i];
+        if (img.closest(skip)) continue;
+        var src = imgSrc(img);
+        if (!src || src.indexOf('http') !== 0 || seen[src]) continue;
+        if (/logo|icon|avatar|payment|flag/i.test(src)) continue;
+        var w = img.naturalWidth || parseInt(img.getAttribute('width') || '0', 10);
+        var h = img.naturalHeight || parseInt(img.getAttribute('height') || '0', 10);
+        if (w && h && (w / h) < 1.6) continue;
+        if (w && w < 500) continue;
+        var inBanner = img.closest('salla-slider, .swiper, .banner, .banners, [class*=banner], [class*=slider], [class*=hero]');
+        if (!(w && h) && !inBanner) continue;
+        seen[src] = true;
+        var a = img.closest('a');
+        out.push({ image: src, link: a ? a.href : null });
+      }
+      return out;
     },
 
     me: async function(){

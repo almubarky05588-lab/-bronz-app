@@ -16,6 +16,13 @@ class CheckoutStep {
   bool get ready => to == 'checkout' && (url?.isNotEmpty ?? false);
 }
 
+/// بانر من بانرات الصفحة الرئيسية في المتجر.
+class StoreBanner {
+  final String image;
+  final String? link;
+  const StoreBanner(this.image, this.link);
+}
+
 /// كل ما تحتاجه الشاشات من المتجر — عبر مكتبة سلة الرسمية في طبقة الربط.
 class StoreApi {
   static final _b = StoreBridge.instance;
@@ -50,6 +57,43 @@ class StoreApi {
     final res = await _b.call('details', {'id': id});
     return Product.fromJson(extractMap(res));
   }
+
+  // ───────── الواجهة ─────────
+
+  static Future<List<StoreBanner>>? _banners;
+
+  /// بانرات رئيسية المتجر نفسها — أي تغيير في لوحة سلة يظهر في التطبيق.
+  static Future<List<StoreBanner>> banners() => _banners ??= _loadBanners();
+
+  static Future<List<StoreBanner>> _loadBanners() async {
+    try {
+      final res = await _b.call('banners', const {}, 20);
+      if (res is! List) return const [];
+      return res
+          .whereType<Map>()
+          .map((m) => StoreBanner('${m['image'] ?? ''}', m['link'] as String?))
+          .where((b) => b.image.startsWith('http'))
+          .toList();
+    } catch (_) {
+      _banners = null;
+      return const [];
+    }
+  }
+
+  static final _covers = <int, Future<String>>{};
+
+  /// صورة غلاف القسم: صورة أول منتج فيه.
+  static Future<String> categoryCover(int id) => _covers.putIfAbsent(id, () async {
+        try {
+          final list = await byCategory(id);
+          for (final p in list) {
+            if (p.image.isNotEmpty) return p.image;
+          }
+        } catch (_) {
+          _covers.remove(id);
+        }
+        return '';
+      });
 
   // ───────── حساب العميل ─────────
 
