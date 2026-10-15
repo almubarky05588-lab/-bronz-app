@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="إشعارات برونز">
+<meta name="theme-color" content="#F7F4EF">
+<title>إشعارات برونز</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F4EF;--card:#fff;--ink:#1A1A1A;--mute:#8A847B;--line:#ECE6DC;--gold:#B08D57;--gold2:#D9BC8A;--ok:#2E7D5B;--bad:#B3261E}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'IBM Plex Sans Arabic',-apple-system,sans-serif;background:var(--bg);color:var(--ink);padding:max(20px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));max-width:520px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;margin:6px 4px 18px}
+h1{font-size:22px;font-weight:700}
+h1 span{color:var(--gold)}
+.link{background:none;border:0;color:var(--mute);font:inherit;font-size:13px}
+.card{background:var(--card);border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 1px 0 var(--line)}
+.t{display:block;font-size:13px;color:var(--mute);margin-bottom:8px;font-weight:500}
+input,textarea,select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:13px 14px;outline:0;transition:.2s}
+input:focus,textarea:focus{border-color:var(--gold2);background:#fff}
+textarea{resize:none;min-height:92px;line-height:1.6}
+.seg{display:flex;background:var(--bg);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--mute);padding:10px;border-radius:11px;transition:.2s}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.row{margin-top:14px}
+.hint{font-size:12px;color:var(--mute);margin-top:6px;line-height:1.6}
+.count{float:left;font-size:12px;color:var(--mute)}
+.hide{display:none!important}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:#fff;font:inherit;font-size:13px;padding:8px 13px;border-radius:999px;color:var(--ink)}
+.chips button.on{border-color:var(--gold);background:#FBF6EE;color:#7A5C2E;font-weight:600}
+.prev{background:linear-gradient(160deg,#2b2b2e,#18181a);border-radius:22px;padding:22px 14px}
+.note{background:rgba(255,255,255,.85);border-radius:18px;padding:11px 13px;display:flex;gap:10px;align-items:flex-start}
+.ic{flex:none;width:38px;height:38px;border-radius:9px;background:#1A1A1A;color:var(--gold2);display:grid;place-items:center;font-weight:700;font-size:15px}
+.nb{flex:1;min-width:0}
+.nh{display:flex;justify-content:space-between;font-size:13px}
+.nh b{font-weight:600}.nh span{color:#777;font-size:12px}
+.nt{font-size:14px;line-height:1.5;color:#222;margin-top:2px;word-wrap:break-word}
+.btn{width:100%;border:0;border-radius:16px;padding:16px;font:inherit;font-size:17px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1A1A1A,#3a3127);transition:.15s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5}
+.msg{margin-top:12px;padding:13px 14px;border-radius:14px;font-size:14px;line-height:1.6}
+.msg.ok{background:#E8F4EE;color:var(--ok)}
+.msg.bad{background:#FBEAEA;color:var(--bad)}
+.logo{width:58px;height:58px;border-radius:16px;background:#1A1A1A;color:var(--gold2);display:grid;place-items:center;font-size:24px;font-weight:700;margin:6px auto 14px}
+.center{text-align:center}
+</style>
+</head>
+<body>
+
+<section id="setup" class="hide">
+  <div class="card center" style="margin-top:40px">
+    <div class="logo">B</div>
+    <h1 style="margin-bottom:6px">إشعارات <span>برونز</span></h1>
+    <p class="hint" style="margin-bottom:18px">الصق مفتاح OneSignal مرة وحدة — ينحفظ في هذا الجهاز فقط.</p>
+    <input id="keyIn" type="password" placeholder="os_v2_app_..." autocomplete="off" dir="ltr">
+    <div class="row"><button class="btn" id="saveKey">حفظ والمتابعة</button></div>
+  </div>
+</section>
+
+<section id="main" class="hide">
+  <header>
+    <h1>إشعارات <span>برونز</span></h1>
+    <button class="link" id="resetKey">تغيير المفتاح</button>
+  </header>
+
+  <div class="card">
+    <span class="t">لمين؟</span>
+    <div class="seg" id="aud">
+      <button data-v="all" class="on">كل العملاء</button>
+      <button data-v="one">عميل واحد</button>
+    </div>
+    <div class="row hide" id="custBox">
+      <input id="cust" inputmode="numeric" placeholder="رقم العميل في سلة" dir="ltr">
+      <p class="hint">تلقاه في لوحة سلة: افتح صفحة العميل، الرقم في آخر الرابط. العميل لازم يكون مسجّل دخول في التطبيق.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="t">العنوان</span>
+    <input id="title" maxlength="60" placeholder="برونز">
+    <div class="row">
+      <span class="t">النص <span class="count" id="cnt">0/180</span></span>
+      <textarea id="body" maxlength="180" placeholder="مثلًا: خصم 30% على كل العطور لنهاية الأسبوع ✨"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="t">وش يفتح لما يضغط عليه؟</span>
+    <div class="chips" id="open">
+      <button data-v="home" class="on">الرئيسية</button>
+      <button data-v="offers">العروض</button>
+      <button data-v="order">طلب</button>
+      <button data-v="product">منتج</button>
+      <button data-v="category">قسم</button>
+    </div>
+    <div class="row hide" id="valBox">
+      <input id="val" inputmode="numeric" dir="ltr">
+      <p class="hint" id="valHint"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="t">معاينة</span>
+    <div class="prev">
+      <div class="note">
+        <div class="ic">B</div>
+        <div class="nb">
+          <div class="nh"><b id="pT">برونز</b><span>الآن</span></div>
+          <div class="nt" id="pB">نص الإشعار يظهر هنا</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="send">إرسال الإشعار</button>
+  <div id="res"></div>
+</section>
+
+<script>
+var KEY = 'bronz_push_key';
+var state = { aud: 'all', open: 'home' };
+var $ = function (id) { return document.getElementById(id); };
+
+function getKey() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+function show() {
+  var has = !!getKey();
+  $('setup').classList.toggle('hide', has);
+  $('main').classList.toggle('hide', !has);
+}
+
+$('saveKey').onclick = function () {
+  var k = $('keyIn').value.trim();
+  if (!k) return;
+  try { localStorage.setItem(KEY, k); } catch (e) {}
+  show();
+};
+$('resetKey').onclick = function () {
+  if (!confirm('تبي تغيّر مفتاح OneSignal؟')) return;
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  $('keyIn').value = '';
+  show();
+};
+
+function pick(groupId, key, after) {
+  var btns = $(groupId).querySelectorAll('button');
+  btns.forEach(function (b) {
+    b.onclick = function () {
+      btns.forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      state[key] = b.getAttribute('data-v');
+      after();
+    };
+  });
+}
+
+var hints = {
+  order: ['رقم الطلب', 'رقم الطلب الداخلي في سلة (من رابط صفحة الطلب).'],
+  product: ['رقم المنتج', 'من رابط المنتج في المتجر: الرقم بعد حرف p.'],
+  category: ['رقم القسم', 'من رابط القسم في المتجر: الرقم بعد حرف c.']
+};
+
+pick('aud', 'aud', function () { $('custBox').classList.toggle('hide', state.aud !== 'one'); });
+pick('open', 'open', function () {
+  var h = hints[state.open];
+  $('valBox').classList.toggle('hide', !h);
+  if (h) { $('val').placeholder = h[0]; $('valHint').textContent = h[1]; }
+});
+
+function preview() {
+  $('pT').textContent = $('title').value.trim() || 'برونز';
+  $('pB').textContent = $('body').value.trim() || 'نص الإشعار يظهر هنا';
+  $('cnt').textContent = $('body').value.length + '/180';
+}
+$('title').oninput = preview;
+$('body').oninput = preview;
+
+function result(ok, text) {
+  $('res').innerHTML = '';
+  var d = document.createElement('div');
+  d.className = 'msg ' + (ok ? 'ok' : 'bad');
+  d.textContent = text;
+  $('res').appendChild(d);
+}
+
+function explain(status, out) {
+  if (status === 401 || status === 403) return 'المفتاح غير صحيح — اضغط «تغيير المفتاح» وألصقه من جديد.';
+  var errs = out && out.errors;
+  var txt = Array.isArray(errs) ? errs.join(' ') : (errs ? JSON.stringify(errs) : (out && out.error) || '');
+  if (/not subscribed|invalid_aliases|no subscribers|All included players/i.test(txt))
+    return state.aud === 'one'
+      ? 'العميل هذا ما عنده إشعارات مفعّلة، أو ما سجّل دخوله في التطبيق.'
+      : 'ما فيه أحد مشترك في الإشعارات للحين.';
+  return 'ما انرسل: ' + (txt || ('خطأ ' + status));
+}
+
+$('send').onclick = function () {
+  var body = $('body').value.trim();
+  if (!body) return result(false, 'اكتب نص الإشعار أول.');
+  var customer = state.aud === 'one' ? $('cust').value.trim() : '';
+  if (state.aud === 'one' && !customer) return result(false, 'اكتب رقم العميل.');
+  var needVal = !!hints[state.open];
+  var value = $('val').value.trim();
+  if (needVal && !value) return result(false, 'اكتب ' + hints[state.open][0] + '.');
+  if (state.aud === 'all' && !confirm('بيوصل الإشعار لكل العملاء. متأكد؟')) return;
+
+  var btn = $('send');
+  btn.disabled = true; btn.textContent = 'جاري الإرسال…';
+  fetch('/send', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-key': getKey() },
+    body: JSON.stringify({
+      title: $('title').value, body: body, customer: customer,
+      open: state.open, value: value
+    })
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (out) {
+      var errs = out.errors;
+      var hasErr = errs && (!Array.isArray(errs) || errs.length);
+      if (r.ok && out.id && !hasErr) {
+        result(true, 'انرسل ✅' + (out.recipients ? ' — وصل لـ ' + out.recipients + ' جوال' : ''));
+        $('body').value = ''; preview();
+      } else {
+        result(false, explain(r.status, out));
+      }
+    });
+  }).catch(function () {
+    result(false, 'تعذّر الاتصال — تأكد من الإنترنت وجرّب مرة ثانية.');
+  }).then(function () {
+    btn.disabled = false; btn.textContent = 'إرسال الإشعار';
+  });
+};
+
+show();
+preview();
+</script>
+</body>
+</html>
