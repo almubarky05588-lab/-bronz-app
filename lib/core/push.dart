@@ -21,8 +21,8 @@ final navigatorKey = GlobalKey<NavigatorState>();
 ///   فيصله إشعار تغيّر حالة طلبه هو فقط.
 /// - الضغط على الإشعار يفتح داخل التطبيق حسب بياناته الإضافية:
 ///   order_id → تفاصيل الطلب · product_id → المنتج · category_id → القسم
-///   offers → العروض · url → أي رابط من المتجر
-/// - النوافذ المنبثقة (In-App) تظهر تلقائيًا من لوحة OneSignal.
+///   offers → العروض · latest → وصل حديثًا · url → أي رابط من المتجر
+/// - البوب اب الترويجي يُدار من «لوحة برونز» (widgets/promo_popup.dart).
 class Push {
   static bool _ready = false;
   static Map<String, dynamic>? _pending;
@@ -75,6 +75,9 @@ class Push {
     if (p != null) _handle(p);
   }
 
+  /// فتح وجهة داخل التطبيق (يستخدمها البوب اب بنفس صيغة بيانات الإشعار).
+  static void open(Map<String, dynamic> d) => _handle(d);
+
   static void _handle(Map<String, dynamic> d) {
     final nav = navigatorKey.currentState;
     if (nav == null || !_uiReady) {
@@ -106,7 +109,7 @@ class Push {
       return;
     }
     final cat = n('category_id');
-    final c = cat == null ? null : findCategory(cat);
+    final c = cat == null ? null : (findCategory(cat) ?? StoreCategory(cat, '${d['title'] ?? 'القسم'}', Icons.category_outlined));
     if (c != null) {
       nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
       return;
@@ -114,6 +117,12 @@ class Push {
     if (d['offers'] != null) {
       nav.push(MaterialPageRoute(
         builder: (_) => ProductListScreen(title: 'العروض', loader: (p) => StoreApi.offers(page: p)),
+      ));
+      return;
+    }
+    if (d['latest'] != null) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: 'وصل حديثًا', loader: (p) => StoreApi.latest(page: p)),
       ));
       return;
     }
