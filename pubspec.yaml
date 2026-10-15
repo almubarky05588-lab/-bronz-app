@@ -29,10 +29,10 @@ flutter:
   assets:
     - assets/branding/
 
-# أيقونة التطبيق بكل المقاسات — تتولّد وقت البناء
+# أيقونة التطبيق بكل المقاسات — تتولّد وقت البناء (iOS أولًا)
 flutter_launcher_icons:
   ios: true
-  android: true
+  android: false
   image_path: "assets/branding/BRONZ_app_icon_4096.png"
   remove_alpha_ios: true
   background_color_ios: "#FFFFFF"
@@ -41,8 +41,6 @@ flutter_launcher_icons:
 flutter_native_splash:
   color: "#FFFFFF"
   background_image: "assets/branding/BRONZ_splash_graphite.png"
-  android_12:
-    color: "#FFFFFF"
-    image: "assets/branding/BRONZ_app_icon_4096.png"
-    icon_background_color: "#FFFFFF"
+  ios: true
+  android: false
   web: false
