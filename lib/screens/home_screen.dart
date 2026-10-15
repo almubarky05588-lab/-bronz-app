@@ -6,6 +6,33 @@ import '../core/theme.dart';
 import '../widgets/product_rail.dart';
 import 'category_screen.dart';
 
+/// شعار برونز الأصلي مفرّغًا: الخلفية البيضاء تذوب في لون الشاشة
+/// (دمج بالضرب Multiply) فلا يبقى إلا الشعار الأسود بالتاج،
+/// والإطار يقص المساحة الفارغة حوله.
+class BronzLogo extends StatelessWidget {
+  final double width;
+  const BronzLogo({super.key, this.width = 150});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: width * 0.30,
+      child: ClipRect(
+        child: Image.asset(
+          'assets/branding/BRONZ_app_icon_4096.png',
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          color: BronzColors.bg,
+          colorBlendMode: BlendMode.multiply,
+          filterQuality: FilterQuality.high,
+          cacheWidth: 1024,
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -21,15 +48,11 @@ class HomeScreen extends StatelessWidget {
         child: ListView(
           children: [
             const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'BRONZ',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: 8),
-              ),
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Center(child: BronzLogo(width: 150)),
             ),
             Container(
-              margin: const EdgeInsets.all(16),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
