@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/cart.dart';
+import 'core/demo.dart';
 import 'core/favorites.dart';
 import 'core/push.dart';
 import 'core/remote_config.dart';
@@ -85,7 +86,7 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _pausedAt = DateTime.now();
-    } else if (state == AppLifecycleState.resumed && _removeSplash) {
+    } else if (state == AppLifecycleState.resumed && _removeSplash && !kScreenshots) {
       final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
       if (away >= const Duration(seconds: 60)) {
         RemoteConfig.instance.refresh().then((_) => PromoPopup.maybeShow());
@@ -114,6 +115,8 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
 
     Push.uiReady();
     if (storeReady) Push.identify();
+
+    if (kScreenshots) return; // وضع تصوير المتجر: بدون نوافذ
 
     // إذن الإشعارات أولًا (مرة وحدة بالعمر)، ثم البوب اب لو مفعّل من اللوحة
     await Future.delayed(const Duration(milliseconds: 600));

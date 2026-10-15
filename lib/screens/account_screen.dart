@@ -47,6 +47,42 @@ class _AccountScreenState extends State<AccountScreen> {
     _refresh();
   }
 
+  /// حذف الحساب: تأكيد ← طلب حذف رسمي لخدمة العملاء ← تسجيل خروج من الجهاز.
+  Future<void> _deleteAccount() async {
+    if (!await StoreApi.isLoggedIn()) {
+      if (mounted) showBronzToast(context, 'سجّل دخولك أول عشان تحذف حسابك', icon: Icons.info_outline_rounded);
+      return;
+    }
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الحساب'),
+        content: const Text(
+          'بيتم حذف حسابك وبياناتك (الاسم، رقم الجوال، العناوين) من متجر برونز نهائيًا خلال 48 ساعة، '
+          'وبيتم تسجيل خروجك من التطبيق الحين. الطلبات السابقة تبقى محفوظة نظاميًا للفواتير فقط.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف حسابي', style: TextStyle(color: Color(0xFFB3261E), fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = (await StoreApi.customerName()) ?? '';
+    final msg = Uri.encodeComponent('طلب حذف حساب من تطبيق برونز\nالاسم: $name\nأرجو حذف حسابي وبياناتي نهائيًا.');
+    await launchUrl(Uri.parse('https://wa.me/${StoreConfig.whatsapp}?text=$msg'), mode: LaunchMode.externalApplication);
+    try {
+      await StoreApi.logout();
+    } catch (_) {}
+    if (!mounted) return;
+    showBronzToast(context, 'وصلنا طلب حذف حسابك', icon: PhosphorIcons.checkCircle());
+    _refresh();
+  }
+
   Future<void> _open(String url) async {
     final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     if (!ok && mounted) showBronzToast(context, 'تعذّر فتح الرابط', icon: Icons.info_outline_rounded);
@@ -277,6 +313,40 @@ class _AccountScreenState extends State<AccountScreen> {
                       _Perk(PhosphorIcons.truck(), 'شحن سريع', 'نوصّل لجميع مدن المملكة'),
                       const Divider(height: 1, indent: 60, color: BronzColors.line),
                       _Perk(PhosphorIcons.lock(), 'دفع آمن', 'مدى، فيزا، ماستركارد وغيرها'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 26),
+
+          // ─── الخصوصية والحساب (مطلوب من آبل) ───
+          FadeSlideIn(
+            order: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _section('الخصوصية والحساب'),
+                Container(
+                  decoration: _card,
+                  child: Column(
+                    children: [
+                      _ContactRow(
+                        icon: Icons.privacy_tip_outlined,
+                        tint: BronzColors.ink,
+                        title: 'سياسة الخصوصية',
+                        sub: 'كيف نتعامل مع بياناتك',
+                        onTap: () => _open(StoreConfig.privacyUrl),
+                      ),
+                      const Divider(height: 1, indent: 60, color: BronzColors.line),
+                      _ContactRow(
+                        icon: Icons.person_remove_outlined,
+                        tint: const Color(0xFFB3261E),
+                        title: 'حذف الحساب',
+                        sub: 'حذف حسابك وبياناتك نهائيًا',
+                        onTap: _deleteAccount,
+                      ),
                     ],
                   ),
                 ),
