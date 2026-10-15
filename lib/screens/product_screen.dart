@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
 import '../core/product.dart';
@@ -6,6 +7,7 @@ import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../core/util.dart';
 import '../widgets/common.dart';
+import '../widgets/product_card.dart';
 import 'cart_screen.dart';
 
 class ProductScreen extends StatefulWidget {
@@ -55,87 +57,136 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
     final desc = stripHtml(_p.description);
+    final off = _p.discountPercent;
+    final ready = _p.name.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        actions: [
-          ListenableBuilder(
-            listenable: Cart.instance,
-            builder: (context, _) => IconButton(
-              onPressed: _openCart,
-              icon: Badge(
-                backgroundColor: BronzColors.ink,
-                textColor: Colors.white,
-                isLabelVisible: Cart.instance.count > 0,
-                label: Text('${Cart.instance.count}'),
-                child: const Icon(Icons.shopping_bag_outlined),
-              ),
+        leading: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 12),
+          child: Center(
+            child: RoundIcon(
+              icon: PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+              size: 40,
+              onTap: () => Navigator.of(context).maybePop(),
             ),
           ),
-          const SizedBox(width: 4),
+        ),
+        leadingWidth: 64,
+        actions: [
+          FavButton(product: _p, size: 40),
+          const SizedBox(width: 8),
+          ListenableBuilder(
+            listenable: Cart.instance,
+            builder: (context, _) => Badge(
+              backgroundColor: BronzColors.ink,
+              textColor: Colors.white,
+              isLabelVisible: Cart.instance.count > 0,
+              label: Text('${Cart.instance.count}'),
+              child: RoundIcon(icon: PhosphorIcons.handbag(), size: 40, onTap: _openCart),
+            ),
+          ),
+          const SizedBox(width: 12),
         ],
       ),
       body: ListView(
         children: [
-          Container(
-            color: Colors.white,
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: PageView.builder(
-                itemCount: _p.images.isEmpty ? 1 : _p.images.length,
-                onPageChanged: (i) => setState(() => _image = i),
-                itemBuilder: (_, i) => Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: NetImage(_p.images.isEmpty ? _p.image : _p.images[i]),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26),
+              child: Container(
+                color: Colors.white,
+                child: Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: PageView.builder(
+                        itemCount: _p.images.isEmpty ? 1 : _p.images.length,
+                        onPageChanged: (i) => setState(() => _image = i),
+                        itemBuilder: (_, i) => NetImage(
+                          _p.images.isEmpty ? _p.image : _p.images[i],
+                          padding: 26,
+                        ),
+                      ),
+                    ),
+                    if (off != null)
+                      PositionedDirectional(
+                        top: 16,
+                        start: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(color: BronzColors.sale, borderRadius: BorderRadius.circular(20)),
+                          child: Text('−$off%',
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                    if (_p.images.length > 1)
+                      Positioned(
+                        bottom: 14,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (var i = 0; i < _p.images.length; i++)
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: i == _image ? 18 : 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: i == _image ? BronzColors.ink : const Color(0xFFD6D0C7),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
-          if (_p.images.length > 1)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < _p.images.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == _image ? 18 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: i == _image ? BronzColors.ink : const Color(0xFFD6D0C7),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                ],
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_p.name, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.4)),
+                if (_p.brand.isNotEmpty) ...[
+                  Text(_p.brand,
+                      style: const TextStyle(color: BronzColors.gold, fontWeight: FontWeight.w800, fontSize: 14)),
+                  const SizedBox(height: 4),
+                ],
+                if (ready)
+                  Text(_p.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.4))
+                else
+                  Container(
+                    height: 22,
+                    width: 220,
+                    decoration: BoxDecoration(color: BronzColors.soft, borderRadius: BorderRadius.circular(6)),
+                  ),
                 const SizedBox(height: 12),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(formatPrice(_p.price),
-                        style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      _p.price > 0 ? formatPrice(_p.price) : '',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: off != null ? BronzColors.sale : BronzColors.ink,
+                      ),
+                    ),
                     if (_p.oldPrice != null) ...[
                       const SizedBox(width: 10),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
+                        padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           formatPrice(_p.oldPrice!),
-                          style: t.bodyLarge?.copyWith(
+                          style: const TextStyle(
+                            fontSize: 15,
                             color: BronzColors.muted,
                             decoration: TextDecoration.lineThrough,
                           ),
@@ -145,20 +196,20 @@ class _ProductScreenState extends State<ProductScreen> {
                   ],
                 ),
                 const SizedBox(height: 18),
-                const Wrap(
+                Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _Perk(Icons.verified_outlined, 'أصلي 100%'),
-                    _Perk(Icons.local_shipping_outlined, 'شحن لكل المدن'),
-                    _Perk(Icons.lock_outline_rounded, 'دفع آمن'),
+                    _Perk(PhosphorIcons.sealCheck(), 'أصلي 100%'),
+                    _Perk(PhosphorIcons.truck(), 'شحن لكل المدن'),
+                    _Perk(PhosphorIcons.lockSimple(), 'دفع آمن'),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Text('الوصف', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 26),
+                const Text('الوصف', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 10),
                 if (desc.isNotEmpty)
-                  Text(desc, style: t.bodyMedium?.copyWith(height: 1.8, color: const Color(0xFF3A3632)))
+                  Text(desc, style: const TextStyle(fontSize: 14.5, height: 1.85, color: Color(0xFF3A3632)))
                 else if (_loadingDetails)
                   Column(
                     children: List.generate(
@@ -182,43 +233,45 @@ class _ProductScreenState extends State<ProductScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: BronzColors.bg,
-          border: Border(top: BorderSide(color: Color(0xFFECE7DF))),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Row(
-              children: [
-                QtyStepper(value: _qty, onChanged: (v) => setState(() => _qty = v)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _p.available ? _add : null,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _justAdded
-                          ? const Row(
-                              key: ValueKey('added'),
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.check_rounded, size: 20),
-                                SizedBox(width: 6),
-                                Text('تمت الإضافة', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                              ],
-                            )
-                          : Text(
-                              _p.available ? 'أضف إلى السلة · ${formatPrice(_p.price * _qty)}' : 'نفدت الكمية',
-                              key: const ValueKey('add'),
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                            ),
-                    ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: BronzColors.line),
+            boxShadow: const [BoxShadow(color: Color(0x10000000), blurRadius: 20, offset: Offset(0, 6))],
+          ),
+          child: Row(
+            children: [
+              QtyStepper(value: _qty, onChanged: (v) => setState(() => _qty = v)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _p.available && _p.price > 0 ? _add : null,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _justAdded
+                        ? Row(
+                            key: const ValueKey('added'),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 18),
+                              const SizedBox(width: 6),
+                              const Text('تمت الإضافة'),
+                            ],
+                          )
+                        : Text(
+                            _p.available
+                                ? (_p.price > 0 ? 'أضف إلى السلة · ${formatPrice(_p.price * _qty)}' : 'أضف إلى السلة')
+                                : 'نفدت الكمية',
+                            key: const ValueKey('add'),
+                          ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -238,7 +291,7 @@ class _Perk extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFECE7DF)),
+        border: Border.all(color: BronzColors.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
