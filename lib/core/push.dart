@@ -19,9 +19,9 @@ final navigatorKey = GlobalKey<NavigatorState>();
 /// الإشعارات (OneSignal):
 /// - كل جوال يُربط برقم العميل في سلة (external_id) بعد دخوله،
 ///   فيصله إشعار تغيّر حالة طلبه هو فقط.
-/// - الضغط على الإشعار يفتح داخل التطبيق حسب بياناته الإضافية:
+/// - الضغط على الإشعار (أو أيقونة/بوب اب) يفتح داخل التطبيق حسب البيانات:
 ///   order_id → تفاصيل الطلب · product_id → المنتج · category_id → القسم
-///   offers → العروض · latest → وصل حديثًا · url → أي رابط من المتجر
+///   offers / latest / best / rated → قوائم المنتجات · url → أي رابط من المتجر
 /// - البوب اب الترويجي يُدار من «لوحة برونز» (widgets/promo_popup.dart).
 class Push {
   static bool _ready = false;
@@ -75,7 +75,7 @@ class Push {
     if (p != null) _handle(p);
   }
 
-  /// فتح وجهة داخل التطبيق (يستخدمها البوب اب بنفس صيغة بيانات الإشعار).
+  /// فتح وجهة داخل التطبيق (تستخدمها الأيقونات والبوب اب بنفس صيغة بيانات الإشعار).
   static void open(Map<String, dynamic> d) => _handle(d);
 
   static void _handle(Map<String, dynamic> d) {
@@ -109,7 +109,10 @@ class Push {
       return;
     }
     final cat = n('category_id');
-    final c = cat == null ? null : (findCategory(cat) ?? StoreCategory(cat, '${d['title'] ?? 'القسم'}', Icons.category_outlined));
+    final title = '${d['title'] ?? ''}'.trim();
+    final c = cat == null
+        ? null
+        : (findCategory(cat) ?? StoreCategory(cat, title.isEmpty ? 'القسم' : title, Icons.category_outlined));
     if (c != null) {
       nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
       return;
@@ -123,6 +126,18 @@ class Push {
     if (d['latest'] != null) {
       nav.push(MaterialPageRoute(
         builder: (_) => ProductListScreen(title: 'وصل حديثًا', loader: (p) => StoreApi.latest(page: p)),
+      ));
+      return;
+    }
+    if (d['best'] != null) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: 'الأكثر مبيعًا', loader: (p) => StoreApi.bestSellers(page: p)),
+      ));
+      return;
+    }
+    if (d['rated'] != null) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: 'الأعلى تقييمًا', loader: (p) => StoreApi.topRated(page: p)),
       ));
       return;
     }

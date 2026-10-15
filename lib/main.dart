@@ -20,7 +20,7 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
   await Future.wait([Cart.instance.load(), Favorites.instance.load()]);
   Push.init();
-  RemoteConfig.instance.ensure(); // ترتيب الرئيسية والبوب اب من لوحة برونز
+  RemoteConfig.instance.ensure(); // قطع الرئيسية والبوب اب من لوحة برونز
   runApp(const BronzApp());
 }
 
@@ -54,7 +54,7 @@ class BronzApp extends StatelessWidget {
 }
 
 /// الرئيسية تُبنى وتحمّل بياناتها من أول لحظة، والرسم الرصاصي فوقها
-/// حتى يجهز المتجر — ثم يختفي بتلاشٍ ناعم، وبعدها البوب اب وإذن الإشعارات.
+/// حتى يجهز المتجر — ثم يختفي بتلاشٍ ناعم، وبعدها إذن الإشعارات ثم البوب اب.
 class _Launch extends StatefulWidget {
   const _Launch();
 
@@ -62,14 +62,35 @@ class _Launch extends StatefulWidget {
   State<_Launch> createState() => _LaunchState();
 }
 
-class _LaunchState extends State<_Launch> {
+class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
   bool _showSplash = true;
   bool _removeSplash = false;
+  DateTime? _pausedAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _waitForStore();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// لما يرجع العميل للتطبيق بعد دقيقة أو أكثر: نجيب أحدث إعدادات اللوحة ونعرض البوب اب.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _pausedAt = DateTime.now();
+    } else if (state == AppLifecycleState.resumed && _removeSplash) {
+      final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
+      if (away >= const Duration(seconds: 60)) {
+        RemoteConfig.instance.refresh().then((_) => PromoPopup.maybeShow());
+      }
+    }
   }
 
   Future<void> _waitForStore() async {
@@ -94,15 +115,12 @@ class _LaunchState extends State<_Launch> {
     Push.uiReady();
     if (storeReady) Push.identify();
 
-    // البوب اب (لو مفعّل من اللوحة) ثم إذن الإشعارات
-    try {
-      await RemoteConfig.instance.ensure().timeout(const Duration(seconds: 4));
-    } catch (_) {}
-    await Future.delayed(const Duration(milliseconds: 500));
+    // إذن الإشعارات أولًا (مرة وحدة بالعمر)، ثم البوب اب لو مفعّل من اللوحة
+    await Future.delayed(const Duration(milliseconds: 600));
+    await Push.askPermission();
     if (!mounted) return;
-    await PromoPopup.maybeShow();
-    await Future.delayed(const Duration(milliseconds: 700));
-    Push.askPermission();
+    await Future.delayed(const Duration(milliseconds: 500));
+    await PromoPopup.showWhenReady();
   }
 
   @override
