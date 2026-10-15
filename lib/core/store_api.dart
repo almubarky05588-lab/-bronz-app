@@ -43,6 +43,54 @@ class StoreApi {
         .toList();
   }
 
+  /// ترتيب خاص من سلة (الأكثر مبيعًا / الأعلى تقييمًا) عبر واجهة المتجر نفسها.
+  static Future<List<Product>> _sorted(String sort, int page) async {
+    final res = await _b.get('products?source=latest&sort=$sort${page > 1 ? '&page=$page' : ''}');
+    return extractList(res)
+        .whereType<Map>()
+        .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
+        .where((p) => p.id != 0)
+        .toList();
+  }
+
+  /// الأكثر مبيعًا.
+  static Future<List<Product>> bestSellers({int page = 1}) async {
+    try {
+      final l = await _sorted('bestSell', page);
+      if (l.isNotEmpty) return l;
+    } catch (_) {}
+    try {
+      return await _list('sales', page: page);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// الأعلى تقييمًا.
+  static Future<List<Product>> topRated({int page = 1}) async {
+    try {
+      return await _sorted('topRated', page);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// يجمع صفحات متتالية لين يوصل للعدد المطلوب (حد أقصى 4 صفحات).
+  static Future<List<Product>> take(Future<List<Product>> Function(int page) loader, int count) async {
+    final out = <Product>[];
+    final seen = <int>{};
+    for (var page = 1; page <= 4 && out.length < count; page++) {
+      final list = await loader(page);
+      if (list.isEmpty) break;
+      final before = out.length;
+      for (final p in list) {
+        if (seen.add(p.id)) out.add(p);
+      }
+      if (out.length == before) break; // الصفحة ما جابت جديد
+    }
+    return out.length > count ? out.sublist(0, count) : out;
+  }
+
   static Future<List<Product>> latest({int page = 1}) => _list('latest', page: page);
 
   static Future<List<Product>> byCategory(int id, {int page = 1}) =>
