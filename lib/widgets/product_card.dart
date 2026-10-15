@@ -10,6 +10,7 @@ import '../core/util.dart';
 import '../screens/cart_screen.dart';
 import '../screens/product_screen.dart';
 import 'common.dart';
+import 'motion.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -22,15 +23,19 @@ class ProductCard extends StatelessWidget {
     final off = p.discountPercent;
     return SizedBox(
       width: width,
-      child: GestureDetector(
+      child: Pressable(
+        scale: 0.97,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => ProductScreen(product: p)),
         ),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: BronzColors.line),
+            boxShadow: const [
+              BoxShadow(color: Color(0x0A000000), blurRadius: 14, offset: Offset(0, 6)),
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -40,23 +45,19 @@ class ProductCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: NetImage(p.image, padding: 12, background: BronzColors.tile),
-                      ),
-                    ),
+                    // صورة المنتج على أبيض تمامًا فتذوب خلفيتها في البطاقة
+                    NetImage(p.image, padding: 16, background: Colors.white),
                     if (!p.available)
-                      const PositionedDirectional(top: 14, start: 14, child: _Pill('نفدت', BronzColors.muted))
+                      const PositionedDirectional(top: 12, start: 12, child: _Pill('نفدت', BronzColors.muted))
                     else if (off != null)
-                      PositionedDirectional(top: 14, start: 14, child: _Pill('−$off%', BronzColors.sale)),
-                    PositionedDirectional(top: 12, end: 12, child: FavButton(product: p, size: 34)),
+                      PositionedDirectional(top: 12, start: 12, child: _Pill('−$off%', BronzColors.sale)),
+                    PositionedDirectional(top: 10, end: 10, child: FavButton(product: p, size: 34)),
                   ],
                 ),
               ),
+              Container(height: 1, color: BronzColors.line),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -138,7 +139,7 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// زر المفضلة (قلب) — يُستخدم في البطاقات وصفحة المنتج.
+/// زر المفضلة (قلب) — ينبض عند الضغط.
 class FavButton extends StatelessWidget {
   final Product product;
   final double size;
@@ -155,19 +156,26 @@ class FavButton extends StatelessWidget {
             HapticFeedback.lightImpact();
             Favorites.instance.toggle(product);
           },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+          child: Container(
             width: size,
             height: size,
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 2))],
+              boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 8, offset: Offset(0, 2))],
             ),
-            child: Icon(
-              on ? PhosphorIcons.heart(PhosphorIconsStyle.fill) : PhosphorIcons.heart(),
-              size: size * 0.52,
-              color: on ? BronzColors.sale : BronzColors.ink,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              transitionBuilder: (c, a) => ScaleTransition(
+                scale: Tween(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: a, curve: Curves.elasticOut)),
+                child: c,
+              ),
+              child: Icon(
+                on ? PhosphorIcons.heart(PhosphorIconsStyle.fill) : PhosphorIcons.heart(),
+                key: ValueKey(on),
+                size: size * 0.5,
+                color: on ? BronzColors.sale : BronzColors.ink,
+              ),
             ),
           ),
         );
@@ -183,7 +191,8 @@ class _QuickAdd extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = product.available;
-    return GestureDetector(
+    return Pressable(
+      scale: 0.85,
       onTap: !enabled
           ? null
           : () {
@@ -204,7 +213,7 @@ class _QuickAdd extends StatelessWidget {
           color: enabled ? BronzColors.ink : const Color(0xFFD9D4CC),
           shape: BoxShape.circle,
         ),
-        child: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold), size: 18, color: Colors.white),
+        child: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold), size: 19, color: Colors.white),
       ),
     );
   }

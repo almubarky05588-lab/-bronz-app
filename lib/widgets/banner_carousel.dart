@@ -36,7 +36,7 @@ void openStoreLink(BuildContext context, String? link) {
   }
 }
 
-/// بانرات رئيسية المتجر تتقلّب تلقائيًا كل 4 ثوانٍ.
+/// بانرات رئيسية المتجر — بنفس أبعادها الحقيقية (بدون قص)، تتقلّب كل 4 ثوانٍ.
 class BannerCarousel extends StatefulWidget {
   const BannerCarousel({super.key});
 
@@ -45,8 +45,9 @@ class BannerCarousel extends StatefulWidget {
 }
 
 class _BannerCarouselState extends State<BannerCarousel> {
-  final _pc = PageController(viewportFraction: 0.92);
+  final _pc = PageController();
   List<StoreBanner>? _items;
+  double _ratio = 2.0;
   Timer? _timer;
   int _index = 0;
 
@@ -56,6 +57,27 @@ class _BannerCarouselState extends State<BannerCarousel> {
     _load();
   }
 
+  /// يقرأ أبعاد أول بانر الحقيقية حتى يُعرض كاملًا بدون قص.
+  Future<double> _ratioOf(String url) {
+    final c = Completer<double>();
+    final stream = CachedNetworkImageProvider(url).resolve(const ImageConfiguration());
+    late final ImageStreamListener l;
+    l = ImageStreamListener(
+      (info, _) {
+        if (!c.isCompleted && info.image.height > 0) {
+          c.complete(info.image.width / info.image.height);
+        }
+        stream.removeListener(l);
+      },
+      onError: (_, __) {
+        if (!c.isCompleted) c.complete(2.0);
+        stream.removeListener(l);
+      },
+    );
+    stream.addListener(l);
+    return c.future.timeout(const Duration(seconds: 8), onTimeout: () => 2.0);
+  }
+
   Future<void> _load() async {
     List<StoreBanner> list;
     try {
@@ -63,14 +85,21 @@ class _BannerCarouselState extends State<BannerCarousel> {
     } catch (_) {
       list = const [];
     }
+    var ratio = 2.0;
+    if (list.isNotEmpty) {
+      ratio = (await _ratioOf(list.first.image)).clamp(1.1, 3.4).toDouble();
+    }
     if (!mounted) return;
-    setState(() => _items = list);
+    setState(() {
+      _items = list;
+      _ratio = ratio;
+    });
     _timer?.cancel();
     if (list.length > 1) {
       _timer = Timer.periodic(const Duration(seconds: 4), (_) {
         if (!mounted || !_pc.hasClients) return;
         final next = (_index + 1) % list.length;
-        _pc.animateToPage(next, duration: const Duration(milliseconds: 550), curve: Curves.easeInOutCubic);
+        _pc.animateToPage(next, duration: const Duration(milliseconds: 600), curve: Curves.easeInOutCubic);
       });
     }
   }
@@ -89,7 +118,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: AspectRatio(
-          aspectRatio: 2.05,
+          aspectRatio: 2.0,
           child: Container(
             decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(22)),
           ),
@@ -99,18 +128,18 @@ class _BannerCarouselState extends State<BannerCarousel> {
     if (items.isEmpty) return const _FallbackHero();
     return Column(
       children: [
-        AspectRatio(
-          aspectRatio: 2.05,
-          child: PageView.builder(
-            controller: _pc,
-            itemCount: items.length,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              child: GestureDetector(
-                onTap: () => openStoreLink(context, items[i].link),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: AspectRatio(
+              aspectRatio: _ratio,
+              child: PageView.builder(
+                controller: _pc,
+                itemCount: items.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (context, i) => GestureDetector(
+                  onTap: () => openStoreLink(context, items[i].link),
                   child: CachedNetworkImage(
                     imageUrl: items[i].image,
                     fit: BoxFit.cover,
@@ -124,7 +153,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
           ),
         ),
         if (items.length > 1) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
