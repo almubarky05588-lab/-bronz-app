@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
+import '../core/demo.dart';
 import '../core/theme.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
@@ -18,6 +19,20 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // جولة التصوير: الرئيسية ← الأقسام ← حسابي (توقيتها يطابق ci/screenshots.sh)
+    if (kScreenshots) {
+      Future.delayed(const Duration(seconds: 40), () {
+        if (mounted) setState(() => _index = 1);
+      });
+      Future.delayed(const Duration(seconds: 55), () {
+        if (mounted) setState(() => _index = 3);
+      });
+    }
+  }
 
   void _go(int i) {
     if (i == _index) return;

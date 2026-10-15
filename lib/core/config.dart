@@ -5,4 +5,7 @@ class StoreConfig {
 
   /// نفس الرقم بشكل مقروء للعرض
   static const phoneDisplay = '+966 54 232 5642';
+
+  /// سياسة الخصوصية في المتجر
+  static const privacyUrl = 'https://bronz-sa.com/ar/privacy-policy';
 }
