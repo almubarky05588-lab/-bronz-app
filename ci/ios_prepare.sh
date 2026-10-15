@@ -22,6 +22,9 @@ P="$ROOT/ios/Runner/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$P" || true
 /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$P" || true
 sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = sa.almubarky.bronzApp;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$ROOT/ios/Runner.xcodeproj/project.pbxproj"
+# آيفون فقط (بدون آيباد) — يكفي صور آيفون في App Store
+sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/g' "$ROOT/ios/Runner.xcodeproj/project.pbxproj"
+/usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" "$P" || true
 
 echo "▶ صلاحية الإشعارات (Push)"
 cat > "$ROOT/ios/Runner/Runner.entitlements" <<'EOF'

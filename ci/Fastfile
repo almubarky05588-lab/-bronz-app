@@ -4,7 +4,8 @@ BUNDLE_ID = "sa.almubarky.bronz"
 TEAM_ID = "5V6TC85KRL"
 
 platform :ios do
-  lane :beta do
+  # بناء موقّع جاهز للرفع (مشترك بين TestFlight و App Store)
+  private_lane :signed_build do
     setup_ci
 
     # ربط ملف صلاحيات الإشعارات بالمشروع
@@ -59,11 +60,38 @@ platform :ios do
       }
     )
 
+    api_key
+  end
+
+  lane :beta do
+    api_key = signed_build
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
       distribute_external: false,
       changelog: "نسخة اختبارية من برونز"
+    )
+  end
+
+  # رفع للمتجر + البيانات + الصور + إرسال للمراجعة
+  lane :release do
+    api_key = signed_build
+    deliver(
+      api_key: api_key,
+      app_identifier: BUNDLE_ID,
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots",
+      overwrite_screenshots: true,
+      submit_for_review: true,
+      automatic_release: true,
+      force: true,
+      run_precheck_before_submit: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false
+      }
     )
   end
 end

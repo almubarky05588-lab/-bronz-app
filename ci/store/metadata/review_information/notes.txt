@@ -1,0 +1,4 @@
+Bronz is the official shopping app of bronz-sa.com (an online perfume & cosmetics store in Saudi Arabia, built on the Salla e-commerce platform).
+No login is required to browse products, categories, offers or add items to the cart. Sign-in is by phone number + SMS code (Saudi numbers) and is only needed at checkout.
+Account deletion: Account tab > "حذف الحساب" (Delete account).
+Physical goods only; payments are processed by the store's payment page (no digital content, no in-app purchases).
