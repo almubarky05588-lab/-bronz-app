@@ -7,10 +7,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/cart.dart';
 import 'core/favorites.dart';
 import 'core/push.dart';
+import 'core/remote_config.dart';
 import 'core/store_bridge.dart';
 import 'core/theme.dart';
 import 'screens/shell.dart';
 import 'widgets/common.dart';
+import 'widgets/promo_popup.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +20,7 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
   await Future.wait([Cart.instance.load(), Favorites.instance.load()]);
   Push.init();
+  RemoteConfig.instance.ensure(); // ترتيب الرئيسية والبوب اب من لوحة برونز
   runApp(const BronzApp());
 }
 
@@ -51,7 +54,7 @@ class BronzApp extends StatelessWidget {
 }
 
 /// الرئيسية تُبنى وتحمّل بياناتها من أول لحظة، والرسم الرصاصي فوقها
-/// حتى يجهز المتجر — ثم يختفي بتلاشٍ ناعم، وبعدها نطلب إذن الإشعارات.
+/// حتى يجهز المتجر — ثم يختفي بتلاشٍ ناعم، وبعدها البوب اب وإذن الإشعارات.
 class _Launch extends StatefulWidget {
   const _Launch();
 
@@ -90,7 +93,15 @@ class _LaunchState extends State<_Launch> {
 
     Push.uiReady();
     if (storeReady) Push.identify();
-    await Future.delayed(const Duration(milliseconds: 1200));
+
+    // البوب اب (لو مفعّل من اللوحة) ثم إذن الإشعارات
+    try {
+      await RemoteConfig.instance.ensure().timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    await PromoPopup.maybeShow();
+    await Future.delayed(const Duration(milliseconds: 700));
     Push.askPermission();
   }
 

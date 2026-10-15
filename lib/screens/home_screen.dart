@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/catalog.dart';
+import '../core/remote_config.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../widgets/banner_carousel.dart';
@@ -19,7 +20,96 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
   }
 
-  void _openList(BuildContext context, String title, Future<List<dynamic>> Function(int) _) {}
+  void _openLatest(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: 'وصل حديثًا', loader: (p) => StoreApi.latest(page: p)),
+      ));
+
+  void _openOffers(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: 'العروض', loader: (p) => StoreApi.offers(page: p)),
+      ));
+
+  StoreCategory _category(HomeItem item) =>
+      findCategory(item.id!) ?? StoreCategory(item.id!, item.label, Icons.category_outlined);
+
+  /// الترتيب الافتراضي لو ما وصلت إعدادات اللوحة بعد.
+  static final _defaultCircles = <HomeItem>[
+    const HomeItem(type: 'offers'),
+    const HomeItem(type: 'latest'),
+    for (final c in allCategories) HomeItem(type: 'category', id: c.id),
+  ];
+
+  static final _defaultRails = <HomeItem>[
+    const HomeItem(type: 'latest'),
+    const HomeItem(type: 'offers', label: 'أقوى العروض 🔥'),
+    for (final c in homeSections) HomeItem(type: 'category', id: c.id),
+  ];
+
+  List<Widget> _circles(BuildContext context, AppConfig? cfg) {
+    final items = (cfg == null || cfg.circles.isEmpty) ? _defaultCircles : cfg.circles;
+    final out = <Widget>[];
+    for (final it in items) {
+      if (it.hidden || (it.type != 'offers' && it.type != 'latest' && it.id == null)) continue;
+      switch (it.type) {
+        case 'offers':
+          out.add(_Circle(
+            label: it.label.isEmpty ? 'العروض' : it.label,
+            icon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
+            image: it.image,
+            dark: true,
+            onTap: () => _openOffers(context),
+          ));
+        case 'latest':
+          out.add(_Circle(
+            label: it.label.isEmpty ? 'وصل حديثًا' : it.label,
+            icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+            image: it.image,
+            onTap: () => _openLatest(context),
+          ));
+        default:
+          final c = _category(it);
+          out.add(_Circle(
+            label: it.label.isEmpty ? c.name : it.label,
+            categoryId: c.id,
+            image: it.image,
+            onTap: () => _open(context, c),
+          ));
+      }
+    }
+    return out;
+  }
+
+  List<Widget> _rails(BuildContext context, AppConfig? cfg) {
+    final items = (cfg == null || cfg.rails.isEmpty) ? _defaultRails : cfg.rails;
+    final out = <Widget>[];
+    var order = 4;
+    for (final it in items) {
+      if (it.hidden || (it.type != 'offers' && it.type != 'latest' && it.id == null)) continue;
+      Widget rail;
+      switch (it.type) {
+        case 'latest':
+          rail = ProductRail(
+            title: it.label.isEmpty ? 'وصل حديثًا' : it.label,
+            loader: () => StoreApi.latest(),
+            onMore: () => _openLatest(context),
+          );
+        case 'offers':
+          rail = ProductRail(
+            title: it.label.isEmpty ? 'أقوى العروض 🔥' : it.label,
+            loader: () => StoreApi.offers(),
+            onMore: () => _openOffers(context),
+          );
+        default:
+          final c = _category(it);
+          rail = ProductRail(
+            title: it.label.isEmpty ? c.name : it.label,
+            loader: () => StoreApi.byCategory(c.id),
+            onMore: () => _open(context, c),
+          );
+      }
+      out.add(FadeSlideIn(key: ValueKey('${it.type}-${it.id}'), order: order++, child: rail));
+    }
+    return out;
+  }
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -114,78 +204,27 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            // ─── دوائر الأقسام ───
-            FadeSlideIn(
-              order: 3,
-              child: SizedBox(
-                height: 112,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  children: [
-                    _Circle(
-                      label: 'العروض',
-                      icon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
-                      dark: true,
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ProductListScreen(
-                          title: 'العروض',
-                          loader: (p) => StoreApi.offers(page: p),
-                        ),
-                      )),
+            // ─── دوائر الأقسام + صفوف المنتجات (تُدار من لوحة برونز) ───
+            ValueListenableBuilder<AppConfig?>(
+              valueListenable: RemoteConfig.instance.config,
+              builder: (context, cfg, _) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FadeSlideIn(
+                    order: 3,
+                    child: SizedBox(
+                      height: 112,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        children: _circles(context, cfg),
+                      ),
                     ),
-                    _Circle(
-                      label: 'وصل حديثًا',
-                      icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ProductListScreen(
-                          title: 'وصل حديثًا',
-                          loader: (p) => StoreApi.latest(page: p),
-                        ),
-                      )),
-                    ),
-                    for (final c in allCategories)
-                      _Circle(label: c.name, categoryId: c.id, onTap: () => _open(context, c)),
-                  ],
-                ),
-              ),
-            ),
-            // ─── صفوف المنتجات ───
-            FadeSlideIn(
-              order: 4,
-              child: ProductRail(
-                title: 'وصل حديثًا',
-                loader: () => StoreApi.latest(),
-                onMore: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ProductListScreen(
-                    title: 'وصل حديثًا',
-                    loader: (p) => StoreApi.latest(page: p),
                   ),
-                )),
+                  ..._rails(context, cfg),
+                ],
               ),
             ),
-            FadeSlideIn(
-              order: 5,
-              child: ProductRail(
-                title: 'أقوى العروض 🔥',
-                loader: () => StoreApi.offers(),
-                onMore: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => ProductListScreen(
-                    title: 'العروض',
-                    loader: (p) => StoreApi.offers(page: p),
-                  ),
-                )),
-              ),
-            ),
-            for (var i = 0; i < homeSections.length; i++)
-              FadeSlideIn(
-                order: 6 + i,
-                child: ProductRail(
-                  title: homeSections[i].name,
-                  loader: () => StoreApi.byCategory(homeSections[i].id),
-                  onMore: () => _open(context, homeSections[i]),
-                ),
-              ),
             const SizedBox(height: 8),
           ],
         ),
@@ -221,6 +260,7 @@ class _Circle extends StatelessWidget {
   final String label;
   final int? categoryId;
   final IconData? icon;
+  final String image;
   final bool dark;
   final VoidCallback onTap;
   const _Circle({
@@ -228,6 +268,7 @@ class _Circle extends StatelessWidget {
     required this.onTap,
     this.categoryId,
     this.icon,
+    this.image = '',
     this.dark = false,
   });
 
@@ -255,13 +296,15 @@ class _Circle extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                 child: ClipOval(
-                  child: categoryId != null
-                      ? CategoryCover(categoryId: categoryId!, padding: 10)
-                      : Container(
-                          color: dark ? BronzColors.ink : Colors.white,
-                          alignment: Alignment.center,
-                          child: Icon(icon, size: 28, color: dark ? BronzColors.gold : BronzColors.ink),
-                        ),
+                  child: image.isNotEmpty
+                      ? NetImage(image, padding: 10, background: Colors.white)
+                      : categoryId != null
+                          ? CategoryCover(categoryId: categoryId!, padding: 10)
+                          : Container(
+                              color: dark ? BronzColors.ink : Colors.white,
+                              alignment: Alignment.center,
+                              child: Icon(icon, size: 28, color: dark ? BronzColors.gold : BronzColors.ink),
+                            ),
                 ),
               ),
             ),
