@@ -1,6 +1,6 @@
-// لوحة برونز — إشعارات OneSignal + ترتيب الرئيسية + البوب اب.
+// لوحة برونز — إشعارات OneSignal + منشئ الرئيسية (قطع حرة) + البوب اب + رفع الصور.
 // مفتاح OneSignal لا يُحفظ هنا: يرسله جوال صاحب المتجر مع كل إرسال.
-// إعدادات الرئيسية والبوب اب تُحفظ في KV (CONFIG) ويقرأها التطبيق من /config.
+// الإعدادات والصور تُحفظ في KV (CONFIG) ويقرأها التطبيق من /config.
 import PAGE from './page.html';
 
 const APP_ID = 'da1ab6c7-deb4-458e-bfcb-6e41e150d686';
@@ -15,25 +15,33 @@ const CATS = [
   [2020370844, 'السيروم'], [111210193, 'عطور الشعر'], [138908188, 'عطور بديلة'],
   [769323888, 'العدسات'], [315372818, 'الرموش'],
 ].map(([id, name]) => ({ id, name }));
+const catName = (id) => (CATS.find((c) => c.id === Number(id)) || {}).name || '';
 
-const catName = (id) => (CATS.find((c) => c.id === id) || {}).name || '';
+const SPECIAL = ['offers', 'latest', 'best', 'rated'];
+const SPECIAL_NAME = { offers: 'العروض', latest: 'وصل حديثًا', best: 'الأكثر مبيعًا', rated: 'الأعلى تقييمًا' };
+const LINKS = ['none', ...SPECIAL, 'category', 'product', 'url'];
 
-const DEFAULT_CONFIG = {
-  v: 0,
-  circles: [
-    { type: 'offers', label: 'العروض' },
-    { type: 'latest', label: 'وصل حديثًا' },
-    ...[636667848, 2011162313, 886820816, 781738507, 952945814, 1860677013, 111210193, 138908188, 769323888, 315372818]
-      .map((id) => ({ type: 'category', id, label: catName(id) })),
-  ],
-  rails: [
-    { type: 'latest', title: 'وصل حديثًا' },
-    { type: 'offers', title: 'أقوى العروض 🔥' },
-    ...[636667848, 2011162313, 781738507, 952945814, 1860677013]
-      .map((id) => ({ type: 'category', id, title: catName(id) })),
-  ],
-  popup: { active: false, id: '', image: '', title: '', body: '', button: 'تسوّق الآن', open: 'offers', value: '', freq: 'once' },
-};
+const catIcon = (id) => ({ label: catName(id), image: '', link: { to: 'category', value: String(id) } });
+
+const DEFAULT_BLOCKS = [
+  { type: 'banners' },
+  { type: 'features' },
+  {
+    type: 'circles', rows: 1, title: '',
+    items: [
+      { label: 'العروض', image: '', link: { to: 'offers', value: '' } },
+      { label: 'وصل حديثًا', image: '', link: { to: 'latest', value: '' } },
+      ...[636667848, 2011162313, 886820816, 781738507, 952945814, 1860677013, 111210193, 138908188, 769323888, 315372818].map(catIcon),
+    ],
+  },
+  { type: 'products', source: 'latest', title: 'وصل حديثًا', style: 'rail', limit: 10 },
+  { type: 'products', source: 'best', title: 'الأكثر مبيعًا ⭐', style: 'rail', limit: 10 },
+  { type: 'products', source: 'offers', title: 'أقوى العروض 🔥', style: 'grid', limit: 6 },
+  ...[636667848, 2011162313, 781738507, 952945814, 1860677013]
+    .map((id) => ({ type: 'products', source: 'category', id, title: catName(id), style: 'rail', limit: 10 })),
+];
+
+const DEFAULT_POPUP = { active: false, id: '', image: '', title: '', body: '', button: 'تسوّق الآن', open: 'offers', value: '', freq: 'once' };
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -48,6 +56,8 @@ export default {
     try {
       if (url.pathname === '/config' && req.method === 'GET') return await getConfig(env);
       if (url.pathname === '/config' && req.method === 'POST') return await saveConfig(req, env);
+      if (url.pathname === '/upload' && req.method === 'POST') return await upload(req, env, url);
+      if (url.pathname.startsWith('/m/') && req.method === 'GET') return await media(env, url);
       if (url.pathname === '/meta' && req.method === 'GET') return json({ cats: CATS });
       if (url.pathname === '/og' && req.method === 'GET') return await ogImage(url);
       if (url.pathname === '/send' && req.method === 'POST') return await send(req);
@@ -62,18 +72,36 @@ export default {
 
 // ───────── الإعدادات ─────────
 
+/** يحوّل الصيغة القديمة (circles/rails) إلى قطع. */
+function migrate(old) {
+  const blocks = [{ type: 'banners' }, { type: 'features' }];
+  if (Array.isArray(old.circles)) {
+    blocks.push({
+      type: 'circles', rows: 1, title: '',
+      items: old.circles.filter((c) => !c.hidden).map((c) => ({
+        label: c.label || (c.type === 'category' ? catName(c.id) : SPECIAL_NAME[c.type] || ''),
+        image: c.image || '',
+        link: c.type === 'category' ? { to: 'category', value: String(c.id) } : { to: c.type, value: '' },
+      })),
+    });
+  }
+  (old.rails || []).forEach((r) => blocks.push({
+    type: 'products', source: r.type === 'category' ? 'category' : r.type, id: r.id,
+    title: r.title || '', style: r.style || 'rail', limit: r.limit || 10, hidden: !!r.hidden,
+  }));
+  return blocks;
+}
+
 async function loadConfig(env) {
   const raw = await env.CONFIG.get('config');
-  if (!raw) return DEFAULT_CONFIG;
-  try {
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-  } catch {
-    return DEFAULT_CONFIG;
-  }
+  let c = {};
+  try { c = raw ? JSON.parse(raw) : {}; } catch { c = {}; }
+  const blocks = Array.isArray(c.blocks) ? c.blocks : (c.circles || c.rails ? migrate(c) : DEFAULT_BLOCKS);
+  return { v: c.v || 0, blocks, popup: { ...DEFAULT_POPUP, ...(c.popup || {}) } };
 }
 
 async function getConfig(env) {
-  return json(await loadConfig(env), 200, { 'cache-control': 'public, max-age=30' });
+  return json(await loadConfig(env), 200, { 'cache-control': 'no-store' });
 }
 
 async function sha(text) {
@@ -99,28 +127,58 @@ const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : undefined;
 };
-const kind = (t) => (['offers', 'latest', 'category'].includes(t) ? t : 'category');
+
+function cleanLink(l) {
+  l = l || {};
+  return { to: LINKS.includes(l.to) ? l.to : 'none', value: str(l.value, 500) };
+}
+
+function cleanBlock(b) {
+  b = b || {};
+  const hidden = !!b.hidden;
+  switch (b.type) {
+    case 'banners':
+    case 'features':
+      return { type: b.type, hidden };
+    case 'circles':
+      return {
+        type: 'circles', hidden,
+        rows: [1, 2, 3].includes(Number(b.rows)) ? Number(b.rows) : 1,
+        title: str(b.title, 40),
+        items: (Array.isArray(b.items) ? b.items : []).slice(0, 40).map((it) => ({
+          label: str(it.label, 30), image: str(it.image, 600), link: cleanLink(it.link),
+        })),
+      };
+    case 'products': {
+      const source = [...SPECIAL, 'category'].includes(b.source) ? b.source : 'latest';
+      const id = num(b.id);
+      if (source === 'category' && !id) return null;
+      return {
+        type: 'products', hidden, source, id,
+        title: str(b.title, 40),
+        style: b.style === 'grid' ? 'grid' : 'rail',
+        limit: Math.min(40, Math.max(2, Math.round(Number(b.limit) || 10))),
+      };
+    }
+  }
+  return null;
+}
 
 function clean(c) {
-  const circles = (Array.isArray(c.circles) ? c.circles : []).slice(0, 30)
-    .map((x) => ({ type: kind(x.type), id: num(x.id), label: str(x.label, 30), image: str(x.image, 500), hidden: !!x.hidden }))
-    .filter((x) => x.type !== 'category' || x.id);
-  const rails = (Array.isArray(c.rails) ? c.rails : []).slice(0, 20)
-    .map((x) => ({ type: kind(x.type), id: num(x.id), title: str(x.title, 40), hidden: !!x.hidden }))
-    .filter((x) => x.type !== 'category' || x.id);
+  const blocks = (Array.isArray(c.blocks) ? c.blocks : []).slice(0, 40).map(cleanBlock).filter(Boolean);
   const p = c.popup || {};
   const popup = {
     active: !!p.active,
     id: str(p.id, 40) || String(Date.now()),
-    image: str(p.image, 500),
+    image: str(p.image, 600),
     title: str(p.title, 60),
     body: str(p.body, 240),
     button: str(p.button, 30) || 'تسوّق الآن',
-    open: ['none', 'offers', 'latest', 'product', 'category', 'url'].includes(p.open) ? p.open : 'none',
+    open: ['none', 'offers', 'latest', 'best', 'product', 'category', 'url'].includes(p.open) ? p.open : 'none',
     value: str(p.value, 500),
     freq: ['once', 'daily', 'always'].includes(p.freq) ? p.freq : 'once',
   };
-  return { v: Date.now(), circles, rails, popup };
+  return { v: Date.now(), blocks, popup };
 }
 
 async function saveConfig(req, env) {
@@ -129,6 +187,32 @@ async function saveConfig(req, env) {
   const c = clean(b);
   await env.CONFIG.put('config', JSON.stringify(c));
   return json({ ok: true, config: c });
+}
+
+// ───────── الصور ─────────
+
+async function upload(req, env, url) {
+  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز غير صحيح' }, 403);
+  const type = (req.headers.get('content-type') || 'image/jpeg').split(';')[0];
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(type)) return json({ error: 'نوع الصورة غير مدعوم' }, 400);
+  const buf = await req.arrayBuffer();
+  if (buf.byteLength > 3 * 1024 * 1024) return json({ error: 'الصورة كبيرة (أقصى 3MB)' }, 400);
+  const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16) + '.' + type.split('/')[1].replace('jpeg', 'jpg');
+  await env.CONFIG.put('img:' + id, buf, { metadata: { type } });
+  return json({ url: url.origin + '/m/' + id });
+}
+
+async function media(env, url) {
+  const id = url.pathname.slice(3);
+  const { value, metadata } = await env.CONFIG.getWithMetadata('img:' + id, { type: 'arrayBuffer' });
+  if (!value) return new Response('not found', { status: 404 });
+  return new Response(value, {
+    headers: {
+      'content-type': (metadata && metadata.type) || 'image/jpeg',
+      'cache-control': 'public, max-age=31536000, immutable',
+      'access-control-allow-origin': '*',
+    },
+  });
 }
 
 // ───────── صورة منتج من رابطه في المتجر ─────────
@@ -176,8 +260,8 @@ async function send(req) {
   const v = str(b.value, 500);
   const data = {};
   if (b.open === 'order' && v) data.order_id = v;
-  if (b.open === 'product' && v) data.product_id = v;
-  if (b.open === 'category' && v) data.category_id = v;
+  if (b.open === 'product' && v) data.product_id = (v.match(/\/p(\d+)/) || [])[1] || v;
+  if (b.open === 'category' && v) data.category_id = (v.match(/\/c(\d+)/) || [])[1] || v;
   if (b.open === 'url' && v) data.url = v;
   if (b.open === 'offers') data.offers = '1';
   if (Object.keys(data).length) msg.data = data;
