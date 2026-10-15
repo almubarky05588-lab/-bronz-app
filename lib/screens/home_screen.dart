@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/catalog.dart';
+import '../core/push.dart';
+import '../core/product.dart';
 import '../core/remote_config.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
@@ -20,96 +22,172 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
   }
 
-  void _openLatest(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ProductListScreen(title: 'وصل حديثًا', loader: (p) => StoreApi.latest(page: p)),
+  void _openList(BuildContext context, String title, Future<List<Product>> Function({int page}) source) =>
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ProductListScreen(title: title, loader: (p) => source(page: p)),
       ));
 
-  void _openOffers(BuildContext context) => Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ProductListScreen(title: 'العروض', loader: (p) => StoreApi.offers(page: p)),
-      ));
-
-  StoreCategory _category(HomeItem item) =>
-      findCategory(item.id!) ?? StoreCategory(item.id!, item.label, Icons.category_outlined);
+  static const _specialName = {
+    'offers': 'العروض',
+    'latest': 'وصل حديثًا',
+    'best': 'الأكثر مبيعًا',
+    'rated': 'الأعلى تقييمًا',
+  };
 
   /// الترتيب الافتراضي لو ما وصلت إعدادات اللوحة بعد.
-  static final _defaultCircles = <HomeItem>[
-    const HomeItem(type: 'offers'),
-    const HomeItem(type: 'latest'),
-    for (final c in allCategories) HomeItem(type: 'category', id: c.id),
+  static final _defaultBlocks = <HomeBlock>[
+    const HomeBlock(type: 'banners'),
+    const HomeBlock(type: 'features'),
+    HomeBlock(type: 'circles', items: [
+      const IconItem(link: LinkTarget('offers')),
+      const IconItem(link: LinkTarget('latest')),
+      for (final c in allCategories) IconItem(link: LinkTarget('category', '${c.id}')),
+    ]),
+    const HomeBlock(type: 'products', source: 'latest'),
+    const HomeBlock(type: 'products', source: 'best', title: 'الأكثر مبيعًا ⭐'),
+    const HomeBlock(type: 'products', source: 'offers', title: 'أقوى العروض 🔥', style: 'grid', limit: 6),
+    for (final c in homeSections) HomeBlock(type: 'products', source: 'category', id: c.id),
   ];
 
-  static final _defaultRails = <HomeItem>[
-    const HomeItem(type: 'latest'),
-    const HomeItem(type: 'offers', label: 'أقوى العروض 🔥'),
-    for (final c in homeSections) HomeItem(type: 'category', id: c.id),
-  ];
-
-  List<Widget> _circles(BuildContext context, AppConfig? cfg) {
-    final items = (cfg == null || cfg.circles.isEmpty) ? _defaultCircles : cfg.circles;
+  List<Widget> _blocks(BuildContext context, AppConfig? cfg) {
+    final blocks = (cfg == null || cfg.blocks.isEmpty) ? _defaultBlocks : cfg.blocks;
     final out = <Widget>[];
-    for (final it in items) {
-      if (it.hidden || (it.type != 'offers' && it.type != 'latest' && it.id == null)) continue;
-      switch (it.type) {
-        case 'offers':
-          out.add(_Circle(
-            label: it.label.isEmpty ? 'العروض' : it.label,
-            icon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
-            image: it.image,
-            dark: true,
-            onTap: () => _openOffers(context),
-          ));
-        case 'latest':
-          out.add(_Circle(
-            label: it.label.isEmpty ? 'وصل حديثًا' : it.label,
-            icon: PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
-            image: it.image,
-            onTap: () => _openLatest(context),
-          ));
-        default:
-          final c = _category(it);
-          out.add(_Circle(
-            label: it.label.isEmpty ? c.name : it.label,
-            categoryId: c.id,
-            image: it.image,
-            onTap: () => _open(context, c),
-          ));
-      }
+    var order = 2;
+    for (var i = 0; i < blocks.length; i++) {
+      final b = blocks[i];
+      if (b.hidden) continue;
+      final Widget? w = switch (b.type) {
+        'banners' => const Padding(padding: EdgeInsets.only(bottom: 18), child: BannerCarousel()),
+        'features' => const Padding(padding: EdgeInsets.only(bottom: 18), child: _Features()),
+        'circles' => _iconsBlock(context, b),
+        'products' => _productsBlock(context, b),
+        _ => null,
+      };
+      if (w == null) continue;
+      out.add(FadeSlideIn(key: ValueKey('blk-$i-${b.type}'), order: order++, child: w));
     }
     return out;
   }
 
-  List<Widget> _rails(BuildContext context, AppConfig? cfg) {
-    final items = (cfg == null || cfg.rails.isEmpty) ? _defaultRails : cfg.rails;
-    final out = <Widget>[];
-    var order = 4;
-    for (final it in items) {
-      if (it.hidden || (it.type != 'offers' && it.type != 'latest' && it.id == null)) continue;
-      Widget rail;
-      switch (it.type) {
-        case 'latest':
-          rail = ProductRail(
-            title: it.label.isEmpty ? 'وصل حديثًا' : it.label,
-            loader: () => StoreApi.latest(),
-            onMore: () => _openLatest(context),
-          );
-        case 'offers':
-          rail = ProductRail(
-            title: it.label.isEmpty ? 'أقوى العروض 🔥' : it.label,
-            loader: () => StoreApi.offers(),
-            onMore: () => _openOffers(context),
-          );
-        default:
-          final c = _category(it);
-          rail = ProductRail(
-            title: it.label.isEmpty ? c.name : it.label,
-            loader: () => StoreApi.byCategory(c.id),
-            onMore: () => _open(context, c),
-          );
-      }
-      out.add(FadeSlideIn(key: ValueKey('${it.type}-${it.id}'), order: order++, child: rail));
+  // ───────── قطعة الأيقونات ─────────
+
+  String _iconLabel(IconItem it) {
+    if (it.label.isNotEmpty) return it.label;
+    if (it.link.to == 'category') {
+      final id = it.link.categoryId;
+      return (id == null ? null : findCategory(id)?.name) ?? '';
     }
-    return out;
+    return _specialName[it.link.to] ?? '';
   }
+
+  Widget _circle(IconItem it) {
+    final label = _iconLabel(it);
+    final to = it.link.to;
+    return _Circle(
+      label: label,
+      image: it.image,
+      categoryId: to == 'category' ? it.link.categoryId : null,
+      icon: switch (to) {
+        'offers' => PhosphorIcons.percent(PhosphorIconsStyle.bold),
+        'latest' => PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
+        'best' => PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
+        'rated' => PhosphorIcons.heart(PhosphorIconsStyle.fill),
+        'product' => PhosphorIcons.handbag(PhosphorIconsStyle.fill),
+        _ => PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+      },
+      dark: to == 'offers',
+      onTap: () {
+        final d = it.link.data(title: label);
+        if (d != null) Push.open(d);
+      },
+    );
+  }
+
+  Widget? _iconsBlock(BuildContext context, HomeBlock b) {
+    if (b.items.isEmpty) return null;
+    final tiles = [for (final it in b.items) _circle(it)];
+    final Widget body;
+    if (b.rows >= 3) {
+      body = GridView.count(
+        crossAxisCount: 4,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        childAspectRatio: 86 / 112,
+        children: tiles,
+      );
+    } else if (b.rows == 2) {
+      body = SizedBox(
+        height: 226,
+        child: GridView.count(
+          crossAxisCount: 2,
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          mainAxisSpacing: 0,
+          crossAxisSpacing: 2,
+          childAspectRatio: 112 / 86,
+          children: tiles,
+        ),
+      );
+    } else {
+      body = SizedBox(
+        height: 112,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          children: tiles,
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (b.title.isNotEmpty) SectionHeader(title: b.title),
+          body,
+        ],
+      ),
+    );
+  }
+
+  // ───────── قطعة المنتجات ─────────
+
+  Widget? _productsBlock(BuildContext context, HomeBlock b) {
+    final String title;
+    final Future<List<Product>> Function({int page}) source;
+    switch (b.source) {
+      case 'offers':
+        title = b.title.isEmpty ? 'أقوى العروض 🔥' : b.title;
+        source = StoreApi.offers;
+      case 'best':
+        title = b.title.isEmpty ? 'الأكثر مبيعًا ⭐' : b.title;
+        source = StoreApi.bestSellers;
+      case 'rated':
+        title = b.title.isEmpty ? 'الأعلى تقييمًا' : b.title;
+        source = StoreApi.topRated;
+      case 'category':
+        if (b.id == null) return null;
+        final c = findCategory(b.id!) ?? StoreCategory(b.id!, b.title, Icons.category_outlined);
+        title = b.title.isEmpty ? c.name : b.title;
+        source = ({int page = 1}) => StoreApi.byCategory(c.id, page: page);
+        return _rail(title, source, () => _open(context, c), b);
+      default:
+        title = b.title.isEmpty ? 'وصل حديثًا' : b.title;
+        source = StoreApi.latest;
+    }
+    return _rail(title, source, () => _openList(context, title, source), b);
+  }
+
+  Widget _rail(String title, Future<List<Product>> Function({int page}) source, VoidCallback onMore, HomeBlock b) =>
+      ProductRail(
+        key: ValueKey('rail-${b.source}-${b.id}-${b.style}-${b.limit}'),
+        title: title,
+        grid: b.style == 'grid',
+        limit: b.limit,
+        loader: () => StoreApi.take((p) => source(page: p), b.limit),
+        onMore: onMore,
+      );
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -187,47 +265,37 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // ─── البانرات ───
-            const FadeSlideIn(order: 2, child: BannerCarousel()),
-            const SizedBox(height: 18),
-            // ─── شريط الميزات المتحرك ───
-            Container(
-              color: BronzColors.ink,
-              child: Marquee(
-                height: 38,
-                children: [
-                  _MarqueeItem(PhosphorIcons.sealCheck(), 'أصلي 100% بضمان برونز'),
-                  _MarqueeItem(PhosphorIcons.truck(), 'شحن سريع لكل مدن المملكة'),
-                  _MarqueeItem(PhosphorIcons.lock(), 'دفع آمن وموثوق'),
-                  _MarqueeItem(PhosphorIcons.sparkle(), 'أشهر الماركات العالمية'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            // ─── دوائر الأقسام + صفوف المنتجات (تُدار من لوحة برونز) ───
+            // ─── قطع الرئيسية (تُدار من لوحة برونز) ───
             ValueListenableBuilder<AppConfig?>(
               valueListenable: RemoteConfig.instance.config,
               builder: (context, cfg, _) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  FadeSlideIn(
-                    order: 3,
-                    child: SizedBox(
-                      height: 112,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        children: _circles(context, cfg),
-                      ),
-                    ),
-                  ),
-                  ..._rails(context, cfg),
-                ],
+                children: _blocks(context, cfg),
               ),
             ),
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Features extends StatelessWidget {
+  const _Features();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: BronzColors.ink,
+      child: Marquee(
+        height: 38,
+        children: [
+          _MarqueeItem(PhosphorIcons.sealCheck(), 'أصلي 100% بضمان برونز'),
+          _MarqueeItem(PhosphorIcons.truck(), 'شحن سريع لكل مدن المملكة'),
+          _MarqueeItem(PhosphorIcons.lock(), 'دفع آمن وموثوق'),
+          _MarqueeItem(PhosphorIcons.sparkle(), 'أشهر الماركات العالمية'),
+        ],
       ),
     );
   }
