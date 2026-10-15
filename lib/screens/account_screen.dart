@@ -199,7 +199,7 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           const SizedBox(height: 26),
 
-          // ─── تواصل معنا ───
+          // ─── تواصل معنا (واتساب فقط) ───
           FadeSlideIn(
             order: 2,
             child: Column(
@@ -208,24 +208,12 @@ class _AccountScreenState extends State<AccountScreen> {
                 _section('تواصل معنا'),
                 Container(
                   decoration: _card,
-                  child: Column(
-                    children: [
-                      _ContactRow(
-                        icon: Icons.chat_rounded,
-                        tint: const Color(0xFF25D366),
-                        title: 'واتساب',
-                        sub: StoreConfig.phoneDisplay,
-                        onTap: () => _open('https://wa.me/${StoreConfig.whatsapp}'),
-                      ),
-                      const Divider(height: 1, indent: 66, color: BronzColors.line),
-                      _ContactRow(
-                        icon: Icons.call_rounded,
-                        tint: BronzColors.ink,
-                        title: 'اتصال',
-                        sub: StoreConfig.phoneDisplay,
-                        onTap: () => _open('tel:+${StoreConfig.whatsapp}'),
-                      ),
-                    ],
+                  child: _ContactRow(
+                    icon: Icons.chat_rounded,
+                    tint: const Color(0xFF25D366),
+                    title: 'واتساب',
+                    sub: StoreConfig.phoneDisplay,
+                    onTap: () => _open('https://wa.me/${StoreConfig.whatsapp}'),
                   ),
                 ),
               ],
