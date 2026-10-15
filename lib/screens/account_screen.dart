@@ -10,6 +10,7 @@ import '../widgets/common.dart';
 import '../widgets/motion.dart';
 import '../widgets/product_card.dart';
 import 'login_screen.dart';
+import 'orders_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -138,11 +139,49 @@ class _AccountScreenState extends State<AccountScreen> {
               },
             ),
           ),
+          const SizedBox(height: 14),
+
+          // ─── طلباتي ───
+          FadeSlideIn(
+            order: 1,
+            child: Pressable(
+              scale: 0.98,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: _card,
+                child: const Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 21,
+                      backgroundColor: BronzColors.ink,
+                      child: Icon(Icons.receipt_long_outlined, color: BronzColors.gold, size: 21),
+                    ),
+                    SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('طلباتي', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+                          SizedBox(height: 2),
+                          Text('حالة طلباتك والفواتير وتتبّع الشحن',
+                              style: TextStyle(color: BronzColors.muted, fontSize: 12.5)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 15, color: BronzColors.muted),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 26),
 
           // ─── المفضلة ───
           FadeSlideIn(
-            order: 1,
+            order: 2,
             child: ListenableBuilder(
               listenable: Favorites.instance,
               builder: (context, _) {
@@ -201,7 +240,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
           // ─── تواصل معنا (واتساب فقط) ───
           FadeSlideIn(
-            order: 2,
+            order: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -223,7 +262,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
           // ─── ليش برونز ───
           FadeSlideIn(
-            order: 3,
+            order: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

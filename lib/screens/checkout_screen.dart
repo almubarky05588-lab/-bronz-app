@@ -8,6 +8,7 @@ import '../core/store_bridge.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'login_screen.dart';
+import 'orders_screen.dart';
 
 /// الدفع:
 /// 1) دخول العميل من شاشة التطبيق (إن لم يكن داخلًا)
@@ -221,24 +222,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: const BoxDecoration(color: BronzColors.ink, shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 46),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.elasticOut,
+              builder: (_, v, child) => Transform.scale(scale: v, child: child),
+              child: Container(
+                width: 88,
+                height: 88,
+                decoration: const BoxDecoration(color: BronzColors.ink, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: BronzColors.gold, size: 48),
+              ),
             ),
             const SizedBox(height: 24),
             const Text('تم استلام طلبك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             const Text(
-              'شكرًا لك! وصلتك رسالة بتفاصيل الطلب، وبنبلغك أول ما يُشحن.',
+              'شكرًا لك! تقدر تتابع حالة طلبك وفاتورته من «طلباتي» أول بأول.',
               textAlign: TextAlign.center,
               style: TextStyle(color: BronzColors.muted, height: 1.6),
             ),
             const SizedBox(height: 28),
             FilledButton(
+              onPressed: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const OrdersScreen()),
+              ),
+              child: const Text('تابع طلبك'),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
               onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-              child: const Text('متابعة التسوق', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text('متابعة التسوق',
+                  style: TextStyle(color: BronzColors.ink, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
