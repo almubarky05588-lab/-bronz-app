@@ -1,0 +1,50 @@
+name: Build Bronz App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate native folders
+        run: flutter create --org sa.bronz --project-name bronz_app --platforms=android,ios .
+      - name: Configure Android
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' $M || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' $M
+          sed -i 's|android:label="bronz_app"|android:label="برونز"|' $M
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bronz-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate native folders
+        run: flutter create --org sa.bronz --project-name bronz_app --platforms=android,ios .
+      - name: Configure iOS
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName برونز" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName برونز" ios/Runner/Info.plist
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
