@@ -54,8 +54,9 @@ class _AccountScreenState extends State<AccountScreen> {
             future: _who,
             builder: (context, s) {
               final loading = s.connectionState != ConnectionState.done;
-              final name = s.data;
+              final String? name = s.data;
               final logged = !loading && name != null;
+              final first = name ?? '';
               return Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -81,7 +82,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         children: [
                           Text(
                             logged
-                                ? (name.isEmpty ? 'أهلًا بك' : 'أهلًا $name')
+                                ? (first.isEmpty ? 'أهلًا بك' : 'أهلًا $first')
                                 : 'أهلًا بك في برونز',
                             style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
                           ),
@@ -187,7 +188,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 const Divider(height: 1, indent: 60, color: BronzColors.line),
                 _Perk(PhosphorIcons.truck(), 'شحن سريع', 'نوصّل لجميع مدن المملكة'),
                 const Divider(height: 1, indent: 60, color: BronzColors.line),
-                _Perk(PhosphorIcons.lock(), 'دفع آمن', 'مدى، فيزا، آبل باي وغيرها'),
+                _Perk(PhosphorIcons.lock(), 'دفع آمن', 'مدى، فيزا، ماستركارد وغيرها'),
               ],
             ),
           ),
