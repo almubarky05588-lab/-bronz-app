@@ -1,10 +1,8 @@
 /// إعدادات التواصل الظاهرة في التطبيق.
 class StoreConfig {
-  /// رقم واتساب خدمة العملاء بصيغة دولية بدون + (مثال: 9665XXXXXXXX).
-  /// إذا كان فاضيًا يختفي زر واتساب تلقائيًا.
-  static const whatsapp = '';
+  /// رقم خدمة العملاء (واتساب واتصال) بصيغة دولية بدون +
+  static const whatsapp = '966542325642';
 
-  static const email = 'nba@nba-sa.com';
-  static const xUrl = 'https://x.com/bronz_sa';
-  static const xHandle = '@bronz_sa';
+  /// نفس الرقم بشكل مقروء للعرض
+  static const phoneDisplay = '+966 54 232 5642';
 }

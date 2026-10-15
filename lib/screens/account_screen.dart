@@ -210,30 +210,20 @@ class _AccountScreenState extends State<AccountScreen> {
                   decoration: _card,
                   child: Column(
                     children: [
-                      if (StoreConfig.whatsapp.isNotEmpty) ...[
-                        _ContactRow(
-                          icon: Icons.chat_rounded,
-                          tint: const Color(0xFF25D366),
-                          title: 'واتساب',
-                          sub: 'نرد عليك بأسرع وقت',
-                          onTap: () => _open('https://wa.me/${StoreConfig.whatsapp}'),
-                        ),
-                        const Divider(height: 1, indent: 66, color: BronzColors.line),
-                      ],
                       _ContactRow(
-                        label: '𝕏',
-                        tint: BronzColors.ink,
-                        title: 'حسابنا على X',
-                        sub: StoreConfig.xHandle,
-                        onTap: () => _open(StoreConfig.xUrl),
+                        icon: Icons.chat_rounded,
+                        tint: const Color(0xFF25D366),
+                        title: 'واتساب',
+                        sub: StoreConfig.phoneDisplay,
+                        onTap: () => _open('https://wa.me/${StoreConfig.whatsapp}'),
                       ),
                       const Divider(height: 1, indent: 66, color: BronzColors.line),
                       _ContactRow(
-                        icon: Icons.mail_outline_rounded,
-                        tint: BronzColors.gold,
-                        title: 'البريد الإلكتروني',
-                        sub: StoreConfig.email,
-                        onTap: () => _open('mailto:${StoreConfig.email}'),
+                        icon: Icons.call_rounded,
+                        tint: BronzColors.ink,
+                        title: 'اتصال',
+                        sub: StoreConfig.phoneDisplay,
+                        onTap: () => _open('tel:+${StoreConfig.whatsapp}'),
                       ),
                     ],
                   ),
@@ -243,7 +233,7 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           const SizedBox(height: 26),
 
-          // ─── لماذا برونز ───
+          // ─── ليش برونز ───
           FadeSlideIn(
             order: 3,
             child: Column(
@@ -279,15 +269,13 @@ class _AccountScreenState extends State<AccountScreen> {
 }
 
 class _ContactRow extends StatelessWidget {
-  final IconData? icon;
-  final String? label;
+  final IconData icon;
   final Color tint;
   final String title;
   final String sub;
   final VoidCallback onTap;
   const _ContactRow({
-    this.icon,
-    this.label,
+    required this.icon,
     required this.tint,
     required this.title,
     required this.sub,
@@ -306,11 +294,8 @@ class _ContactRow extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              alignment: Alignment.center,
               decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
-              child: icon != null
-                  ? Icon(icon, size: 20, color: Colors.white)
-                  : Text(label ?? '', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              child: Icon(icon, size: 20, color: Colors.white),
             ),
             const SizedBox(width: 14),
             Expanded(
