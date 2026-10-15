@@ -16,7 +16,10 @@ dependencies:
   shared_preferences: ^2.2.3
   url_launcher: ^6.3.0
   google_fonts: ^6.2.1
-  phosphor_flutter: ^2.1.0
+  cupertino_icons: ^1.0.8
+  # طبقة أيقونات محلية (المكتبة الأصلية لا تتوافق مع Flutter الحالي)
+  phosphor_flutter:
+    path: packages/phosphor_flutter
 
 dev_dependencies:
   flutter_test:
