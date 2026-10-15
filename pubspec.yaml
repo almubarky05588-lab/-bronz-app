@@ -21,6 +21,28 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/
+
+# أيقونة التطبيق بكل المقاسات — تتولّد وقت البناء
+flutter_launcher_icons:
+  ios: true
+  android: true
+  image_path: "assets/branding/BRONZ_app_icon_4096.png"
+  remove_alpha_ios: true
+  background_color_ios: "#FFFFFF"
+
+# الشاشة الافتتاحية الأصلية (تظهر لحظة فتح التطبيق قبل تشغيل Flutter)
+flutter_native_splash:
+  color: "#FFFFFF"
+  background_image: "assets/branding/BRONZ_splash_graphite.png"
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/branding/BRONZ_app_icon_4096.png"
+    icon_background_color: "#FFFFFF"
+  web: false
