@@ -1,0 +1,69 @@
+default_platform(:ios)
+
+BUNDLE_ID = "sa.almubarky.bronz"
+TEAM_ID = "5V6TC85KRL"
+
+platform :ios do
+  lane :beta do
+    setup_ci
+
+    # ربط ملف صلاحيات الإشعارات بالمشروع
+    require 'xcodeproj'
+    project = Xcodeproj::Project.open('../Runner.xcodeproj')
+    project.targets.select { |t| t.name == 'Runner' }.each do |t|
+      t.build_configurations.each do |c|
+        c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
+      end
+    end
+    project.save
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_KEY"],
+      in_house: false
+    )
+
+    # force: يعيد إنشاء ملف التزويد حتى يشمل صلاحية الإشعارات المفعّلة حديثًا
+    match(
+      type: "appstore",
+      api_key: api_key,
+      app_identifier: [BUNDLE_ID],
+      git_url: "https://github.com/almubarky05588-lab/share-certs",
+      storage_mode: "git",
+      git_branch: "main",
+      team_id: TEAM_ID,
+      readonly: false,
+      force: true
+    )
+
+    profile_name = ENV["sigh_#{BUNDLE_ID}_appstore_profile-name"]
+
+    update_code_signing_settings(
+      path: "Runner.xcodeproj",
+      use_automatic_signing: false,
+      team_id: TEAM_ID,
+      targets: ["Runner"],
+      code_sign_identity: "Apple Distribution",
+      bundle_identifier: BUNDLE_ID,
+      profile_name: profile_name
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        provisioningProfiles: { BUNDLE_ID => profile_name }
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      changelog: "نسخة اختبارية من برونز"
+    )
+  end
+end

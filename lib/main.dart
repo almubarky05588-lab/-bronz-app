@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/cart.dart';
 import 'core/favorites.dart';
+import 'core/push.dart';
 import 'core/store_bridge.dart';
 import 'core/theme.dart';
 import 'screens/shell.dart';
@@ -16,6 +17,7 @@ Future<void> main() async {
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
   await Future.wait([Cart.instance.load(), Favorites.instance.load()]);
+  Push.init();
   runApp(const BronzApp());
 }
 
@@ -26,6 +28,7 @@ class BronzApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'برونز',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       locale: const Locale('ar'),
@@ -35,8 +38,7 @@ class BronzApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      // طبقة الربط المخفية: صفحة المتجر بمقاس جوال كامل (حتى تُحمَّل البانرات
-      // والصور بشكل طبيعي) لكنها شفافة وخلف الواجهة ولا تستقبل أي لمسة
+      // طبقة الربط المخفية: صفحة المتجر بمقاس جوال كامل لكنها شفافة وخلف الواجهة
       builder: (context, child) => Stack(
         children: [
           const Positioned(left: 0, top: 0, width: 400, height: 860, child: StoreBridgeHost()),
@@ -49,7 +51,7 @@ class BronzApp extends StatelessWidget {
 }
 
 /// الرئيسية تُبنى وتحمّل بياناتها من أول لحظة، والرسم الرصاصي فوقها
-/// حتى يجهز المتجر وتمتلئ الصفوف — ثم يختفي بتلاشٍ ناعم.
+/// حتى يجهز المتجر — ثم يختفي بتلاشٍ ناعم، وبعدها نطلب إذن الإشعارات.
 class _Launch extends StatefulWidget {
   const _Launch();
 
@@ -69,8 +71,10 @@ class _LaunchState extends State<_Launch> {
 
   Future<void> _waitForStore() async {
     final started = DateTime.now();
+    var storeReady = false;
     try {
       await StoreBridge.instance.waitReady(seconds: 12);
+      storeReady = true;
       await Future.delayed(const Duration(milliseconds: 1100));
     } catch (_) {
       // لو تأخر المتجر نكمل؛ الرئيسية تعرض حالة إعادة المحاولة بنفسها
@@ -81,7 +85,13 @@ class _LaunchState extends State<_Launch> {
     if (!mounted) return;
     setState(() => _showSplash = false);
     await Future.delayed(const Duration(milliseconds: 450));
-    if (mounted) setState(() => _removeSplash = true);
+    if (!mounted) return;
+    setState(() => _removeSplash = true);
+
+    Push.uiReady();
+    if (storeReady) Push.identify();
+    await Future.delayed(const Duration(milliseconds: 1200));
+    Push.askPermission();
   }
 
   @override

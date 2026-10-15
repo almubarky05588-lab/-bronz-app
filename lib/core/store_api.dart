@@ -1,5 +1,6 @@
 import 'cart.dart';
 import 'product.dart';
+import 'push.dart';
 import 'store_bridge.dart';
 import 'util.dart';
 
@@ -141,6 +142,7 @@ class StoreApi {
     final c = data is Map ? '${data['case']}' : '';
     if (c == 'new_customer') return VerifyResult.newCustomer;
     await _b.refreshSession();
+    await Push.identify();
     return VerifyResult.authenticated;
   }
 
@@ -160,9 +162,11 @@ class StoreApi {
       if (email != null && email.isNotEmpty) 'email': email,
     });
     await _b.refreshSession();
+    await Push.identify();
   }
 
   static Future<void> logout() async {
+    Push.forget();
     await _b.call('logout');
     await _b.refreshSession();
   }
