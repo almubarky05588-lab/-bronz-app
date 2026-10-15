@@ -1,0 +1,7 @@
+{
+  // لوحة إشعارات برونز على Cloudflare Workers — الكود في push-panel/
+  "name": "bronz-push",
+  "main": "push-panel/src/index.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true
+}
