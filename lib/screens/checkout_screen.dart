@@ -1,19 +1,19 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../core/cart.dart';
+import '../core/store_api.dart';
 import '../core/store_bridge.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import 'login_screen.dart';
 
-/// الدفع: ننقل سلة التطبيق إلى سلة المتجر ثم نعرض خطوات الدفع من سلة
-/// بعد إخفاء كل عناصر الموقع (الهيدر، الفوتر، القوائم، البانرات، أزرار التواصل)
-/// وتلوين الصفحة بألوان وخط التطبيق — والغطاء يبقى فوقها حتى يكتمل التنظيف
-/// فلا يظهر الموقع ولو لجزء من ثانية.
+/// الدفع:
+/// 1) دخول العميل من شاشة التطبيق (إن لم يكن داخلًا)
+/// 2) تعبئة سلة المتجر في الخلفية عبر طبقة الربط المحمّلة أصلًا
+/// 3) طلب رابط صفحة الدفع من سلة وفتحه وحده — لا رئيسية ولا سلة ولا أي صفحة من الثيم
+/// 4) الغطاء لا يُرفع أبدًا عن صفحة غير صفحات الدفع، وأي خطأ يظهر داخل التطبيق
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -21,15 +21,20 @@ class CheckoutScreen extends StatefulWidget {
   State<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
+enum _Phase { preparing, paying, done, error }
+
 class _CheckoutScreenState extends State<CheckoutScreen> {
   static final _storeHost = Uri.parse(storeUrl).host;
+  static const _checkoutWords = [
+    'checkout', 'payment', 'pay', 'thank', 'success', 'order', 'verify', '3ds', 'otp', 'confirm',
+  ];
 
   late final WebViewController _c;
+  _Phase _phase = _Phase.preparing;
   bool _covered = true;
-  bool _injected = false;
+  String _status = 'نجهّز طلبك…';
   String? _error;
-  final _failed = <String>[];
-  Timer? _safety;
+  List<String> _failed = const [];
 
   @override
   void initState() {
@@ -38,41 +43,79 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(BronzColors.bg)
       ..enableZoom(false)
-      ..addJavaScriptChannel('BronzCheckout', onMessageReceived: _onMessage)
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: _onStarted,
         onPageFinished: _onFinished,
         onNavigationRequest: _onNavigation,
       ));
-    _start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
-  bool _isStore(String url) => Uri.tryParse(url)?.host == _storeHost;
+  // ───────── التجهيز ─────────
 
   Future<void> _start() async {
     setState(() {
+      _phase = _Phase.preparing;
       _covered = true;
-      _injected = false;
       _error = null;
-      _failed.clear();
+      _status = 'نجهّز طلبك…';
     });
-    // سلة نظيفة في كل مرة حتى لا تتكرر المنتجات
-    await WebViewCookieManager().clearCookies();
-    await _c.loadRequest(Uri.parse(storeUrl));
-    _armSafety();
+    try {
+      if (!await StoreApi.isLoggedIn()) {
+        if (!mounted) return;
+        final ok = await LoginScreen.open(context);
+        if (!ok) {
+          if (mounted) Navigator.of(context).pop();
+          return;
+        }
+      }
+      setState(() => _status = 'ننقل منتجاتك…');
+      var step = await StoreApi.prepareCheckout();
+
+      // الجلسة انتهت عند سلة: نطلب الدخول مرة ثانية ونعيد المحاولة
+      if (step.needsLogin) {
+        if (!mounted) return;
+        final ok = await LoginScreen.open(context);
+        if (!ok) {
+          if (mounted) Navigator.of(context).pop();
+          return;
+        }
+        step = await StoreApi.prepareCheckout();
+      }
+
+      if (!step.ready) {
+        throw StoreError('تعذّر فتح صفحة الدفع، حاول مرة ثانية');
+      }
+      _failed = step.failedItems;
+      setState(() {
+        _phase = _Phase.paying;
+        _status = 'نفتح صفحة الدفع…';
+      });
+      await _c.loadRequest(Uri.parse(step.url!));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _Phase.error;
+        _error = '$e';
+      });
+    }
   }
 
-  void _armSafety() {
-    _safety?.cancel();
-    _safety = Timer(const Duration(seconds: 30), () {
-      if (mounted && _covered && _injected) setState(() => _covered = false);
-    });
+  // ───────── التنقّل داخل صفحة الدفع ─────────
+
+  bool _isStore(String url) => (Uri.tryParse(url)?.host ?? '').endsWith(_storeHost);
+
+  bool _isCheckoutPage(String url) {
+    final u = Uri.tryParse(url);
+    if (u == null) return false;
+    if (!_isStore(url)) return true; // بوابات الدفع والبنوك
+    final s = '${u.path}?${u.query}'.toLowerCase();
+    return _checkoutWords.any(s.contains);
   }
 
-  @override
-  void dispose() {
-    _safety?.cancel();
-    super.dispose();
+  bool _isSuccess(String url) {
+    final s = url.toLowerCase();
+    return _isStore(url) && (s.contains('thank') || s.contains('success') || s.contains('order-received'));
   }
 
   NavigationDecision _onNavigation(NavigationRequest req) {
@@ -81,123 +124,140 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
       return NavigationDecision.prevent;
     }
-    // لو حاول العميل الرجوع لصفحات الموقع العادية (الرئيسية/منتج/قسم) نرجّعه للتطبيق
-    if (_injected && _isStore(u)) {
-      final path = Uri.parse(u).path;
-      const allowed = ['cart', 'checkout', 'payment', 'login', 'auth', 'thank', 'order', 'success', 'verify'];
-      final ok = allowed.any(path.contains);
-      if (!ok) {
-        Navigator.of(context).maybePop();
-        return NavigationDecision.prevent;
-      }
+    if (_isSuccess(u)) {
+      _finish();
+      return NavigationDecision.prevent;
+    }
+    // أي محاولة للذهاب لصفحة عادية في الموقع (الرئيسية/السلة/منتج) → نرجع للتطبيق
+    if (_phase == _Phase.paying && !_isCheckoutPage(u)) {
+      if (mounted) Navigator.of(context).pop();
+      return NavigationDecision.prevent;
     }
     return NavigationDecision.navigate;
   }
 
   void _onStarted(String url) {
-    if (_injected && _isStore(url) && !_covered) {
-      setState(() => _covered = true);
-      _armSafety();
-    }
+    if (_phase != _Phase.paying) return;
+    if (_isStore(url) && !_covered) setState(() => _covered = true);
   }
 
   Future<void> _onFinished(String url) async {
-    if (!_injected) {
-      _injected = true;
-      final items = Cart.instance.items.map((e) => {'id': e.id, 'qty': e.qty, 'name': e.name}).toList();
-      await _c.runJavaScript(_cleanJs);
-      await _c.runJavaScript(_addJs.replaceFirst('__ITEMS__', jsonEncode(items)));
-      return;
-    }
-    if (url.contains('thank') || url.contains('success')) {
-      Cart.instance.clear();
-    }
+    if (_phase != _Phase.paying) return;
+    if (_isSuccess(url)) return _finish();
+    if (!_isCheckoutPage(url)) return; // الغطاء يبقى
     if (_isStore(url)) {
       await _c.runJavaScript(_cleanJs);
-      await Future.delayed(const Duration(milliseconds: 180));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
     if (!mounted) return;
     if (_covered) {
       setState(() => _covered = false);
       if (_failed.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('تعذّرت إضافة: ${_failed.join('، ')}'),
-        ));
-        _failed.clear();
+        showBronzToast(context, 'تعذّرت إضافة: ${_failed.join('، ')}', icon: Icons.info_outline_rounded);
+        _failed = const [];
       }
     }
   }
 
-  void _onMessage(JavaScriptMessage m) {
-    try {
-      final map = jsonDecode(m.message) as Map<String, dynamic>;
-      if (map['error'] == 'sdk') {
-        setState(() {
-          _covered = false;
-          _error = 'تعذّر فتح صفحة الدفع';
-        });
-      } else if (map['error'] == 'item') {
-        _failed.add('${map['name']}');
-      }
-    } catch (_) {}
+  void _finish() {
+    if (_phase == _Phase.done) return;
+    Cart.instance.clear();
+    if (mounted) setState(() => _phase = _Phase.done);
   }
+
+  // ───────── الواجهة ─────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('إتمام الطلب')),
+      appBar: AppBar(
+        title: const Text('إتمام الطلب', style: TextStyle(fontWeight: FontWeight.w700)),
+        leading: _phase == _Phase.done
+            ? const SizedBox.shrink()
+            : IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+      ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _c),
-          if (_covered)
+          if (_phase == _Phase.paying) WebViewWidget(controller: _c),
+          if (_phase == _Phase.preparing || (_phase == _Phase.paying && _covered)) _loading(),
+          if (_phase == _Phase.error)
             Container(
               color: BronzColors.bg,
-              alignment: Alignment.center,
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('لحظات…'),
-                ],
-              ),
+              child: ErrorView(message: _error ?? 'حدث خطأ', onRetry: _start),
             ),
-          if (_error != null)
-            Container(
-              color: BronzColors.bg,
-              child: ErrorView(message: _error!, onRetry: _start),
-            ),
+          if (_phase == _Phase.done) _success(),
         ],
       ),
     );
   }
 
-  /// يخفي كل ما يدل على الموقع ويُلبس الصفحة شكل التطبيق.
-  /// MutationObserver يعيد الإخفاء لأي عنصر يظهر لاحقًا (نوافذ، شات، بانرات).
+  Widget _loading() => Container(
+        color: BronzColors.bg,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              width: 34,
+              height: 34,
+              child: CircularProgressIndicator(strokeWidth: 2.6, color: BronzColors.ink),
+            ),
+            const SizedBox(height: 18),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(_status, key: ValueKey(_status), style: const TextStyle(fontSize: 15)),
+            ),
+          ],
+        ),
+      );
+
+  Widget _success() => Container(
+        color: BronzColors.bg,
+        padding: const EdgeInsets.all(32),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 84,
+              height: 84,
+              decoration: const BoxDecoration(color: BronzColors.ink, shape: BoxShape.circle),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 46),
+            ),
+            const SizedBox(height: 24),
+            const Text('تم استلام طلبك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            const Text(
+              'شكرًا لك! وصلتك رسالة بتفاصيل الطلب، وبنبلغك أول ما يُشحن.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: BronzColors.muted, height: 1.6),
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+              child: const Text('متابعة التسوق', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+
+  /// تنظيف صفحة الدفع من أي أثر للموقع وإلباسها شكل التطبيق.
   static const _cleanJs = r'''
 (function(){
   var css = [
-    'header, footer, .store-header, .store-footer, .top-navbar, .main-nav-container, .navbar,',
-    '.breadcrumbs, nav.breadcrumbs, salla-breadcrumb, .page-title-wrap,',
-    'salla-menu, .mobile-menu, .mm-ocd, .sidebar-menu, .menu-toggle,',
-    'salla-social, salla-apps-icons, salla-contacts, salla-trust-badges, .store-contacts,',
-    'salla-advertisement, .advertisement, .s-advertisement, .s-app-banner, .app-banner, .top-banner,',
-    'salla-newsletter, .newsletter, salla-scroll-top, .scroll-top, .back-to-top,',
-    '.whatsapp-button, .floating-whatsapp, [href*="wa.me"], [href*="whatsapp"], salla-chat, #chat-widget, .chat-widget,',
-    'salla-products-slider, .s-products-slider, .related-products, .cart-upsells, salla-offer-modal,',
-    '.cookies-bar, salla-cookies, .cookie-consent, .powered-by, .copyright',
+    'header, footer, .store-header, .store-footer, .top-navbar, .navbar, salla-breadcrumb, .breadcrumbs,',
+    '[href*="wa.me"], [href*="whatsapp"], salla-chat, .chat-widget, .powered-by, .copyright, .cookies-bar, salla-cookies',
     '{ display:none !important; }',
-    'html, body { background:#FAF8F5 !important; padding-top:0 !important; margin-top:0 !important; }',
+    'html, body { background:#FAF8F5 !important; }',
     'body, body * { font-family:"Tajawal", -apple-system, sans-serif !important; }',
     '* { -webkit-tap-highlight-color:transparent !important; }',
     'a, img { -webkit-touch-callout:none !important; }',
     'body { -webkit-user-select:none !important; user-select:none !important; overscroll-behavior:none !important; }',
-    'input, textarea, select { -webkit-user-select:auto !important; user-select:auto !important; font-size:16px !important; }',
-    'main, .main-content, .container { padding-top:8px !important; }',
-    '.btn-primary, .s-button-primary, button[type=submit], salla-button button { background:#111111 !important; border-color:#111111 !important; color:#fff !important; border-radius:14px !important; }',
-    '.card, .s-cart-item, .cart-item, .box { border-radius:14px !important; border-color:#ECE7DF !important; box-shadow:none !important; }'
+    'input, textarea, select { -webkit-user-select:auto !important; user-select:auto !important; font-size:16px !important; }'
   ].join('\n');
-
   function apply(){
     if (!document.head) return;
     if (!document.getElementById('bronz-font')) {
@@ -212,38 +272,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     var v = document.querySelector('meta[name=viewport]');
     if (!v) { v = document.createElement('meta'); v.name = 'viewport'; document.head.appendChild(v); }
     v.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
-    document.title = 'برونز';
   }
   apply();
   if (!window.__bronzObs) {
-    window.__bronzObs = new MutationObserver(function(){ apply(); });
+    window.__bronzObs = new MutationObserver(apply);
     window.__bronzObs.observe(document.documentElement, { childList:true, subtree:true });
   }
-})();
-''';
-
-  static const _addJs = r'''
-(function(){
-  var items = __ITEMS__;
-  function post(o){ try { BronzCheckout.postMessage(JSON.stringify(o)); } catch(e) {} }
-  var tries = 0;
-  function go(){
-    if (!(window.salla && salla.cart && typeof salla.cart.addItem === 'function')) {
-      if (++tries > 100) { post({ ok: false, error: 'sdk' }); return; }
-      setTimeout(go, 250); return;
-    }
-    (async function(){
-      for (var i = 0; i < items.length; i++) {
-        try { await salla.cart.addItem({ id: items[i].id, quantity: items[i].qty }); }
-        catch(e) { post({ ok: false, error: 'item', name: items[i].name }); }
-      }
-      post({ ok: true });
-      var target = '/ar/cart';
-      try { if (salla.url && salla.url.get) target = salla.url.get('cart'); } catch(e) {}
-      window.location.href = target;
-    })();
-  }
-  go();
 })();
 ''';
 }
