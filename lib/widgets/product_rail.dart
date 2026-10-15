@@ -35,12 +35,21 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// صف منتجات أفقي — يختفي كاملًا (مع عنوانه) إذا لم يكن فيه منتجات.
+/// صف منتجات — أفقي أو شبكة عمودين — يختفي كاملًا (مع عنوانه) إذا لم يكن فيه منتجات.
 class ProductRail extends StatefulWidget {
   final String title;
   final Future<List<Product>> Function() loader;
   final VoidCallback? onMore;
-  const ProductRail({super.key, required this.title, required this.loader, this.onMore});
+  final bool grid;
+  final int? limit;
+  const ProductRail({
+    super.key,
+    required this.title,
+    required this.loader,
+    this.onMore,
+    this.grid = false,
+    this.limit,
+  });
 
   @override
   State<ProductRail> createState() => _ProductRailState();
@@ -49,50 +58,72 @@ class ProductRail extends StatefulWidget {
 class _ProductRailState extends State<ProductRail> {
   late Future<List<Product>> _future = widget.loader();
 
+  static const _gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    mainAxisSpacing: 12,
+    crossAxisSpacing: 12,
+    childAspectRatio: 0.58,
+  );
+
+  Widget _placeholder() => Container(
+        width: 170,
+        decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(20)),
+      );
+
+  Widget _retry() => Center(
+        child: TextButton(
+          onPressed: () => setState(() => _future = widget.loader()),
+          child: const Text('تعذّر التحميل — إعادة المحاولة'),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Product>>(
       future: _future,
       builder: (context, s) {
         final loading = s.connectionState != ConnectionState.done;
-        final list = s.data ?? const <Product>[];
+        var list = s.data ?? const <Product>[];
+        if (widget.limit != null && list.length > widget.limit!) list = list.sublist(0, widget.limit!);
         if (!loading && !s.hasError && list.isEmpty) return const SizedBox.shrink();
+
+        final Widget body;
+        if (widget.grid) {
+          body = s.hasError && !loading
+              ? SizedBox(height: 120, child: _retry())
+              : GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  gridDelegate: _gridDelegate,
+                  itemCount: loading ? 4 : list.length,
+                  itemBuilder: (_, i) => loading ? _placeholder() : ProductCard(product: list[i]),
+                );
+        } else {
+          body = SizedBox(
+            height: 304,
+            child: loading
+                ? ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 3,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, __) => _placeholder(),
+                  )
+                : s.hasError
+                    ? _retry()
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: list.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (_, i) => ProductCard(product: list[i], width: 170),
+                      ),
+          );
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SectionHeader(title: widget.title, onMore: widget.onMore),
-            SizedBox(
-              height: 304,
-              child: loading
-                  ? ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: 3,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (_, __) => Container(
-                        width: 170,
-                        decoration: BoxDecoration(
-                          color: BronzColors.tile,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    )
-                  : s.hasError
-                      ? Center(
-                          child: TextButton(
-                            onPressed: () => setState(() => _future = widget.loader()),
-                            child: const Text('تعذّر التحميل — إعادة المحاولة'),
-                          ),
-                        )
-                      : ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
-                          itemBuilder: (_, i) => ProductCard(product: list[i], width: 170),
-                        ),
-            ),
-          ],
+          children: [SectionHeader(title: widget.title, onMore: widget.onMore), body],
         );
       },
     );

@@ -6,23 +6,99 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// إعدادات تُدار من «لوحة برونز» (Cloudflare) بدون تحديث التطبيق:
-/// ترتيب دوائر الأقسام وصورها، صفوف الرئيسية، والبوب اب.
+/// قطع الرئيسية (بانرات، أيقونات، منتجات) وترتيبها، والبوب اب.
 const remoteConfigUrl = 'https://bronz-push.almubarky05588.workers.dev/config';
 
-class HomeItem {
-  final String type; // offers | latest | category
-  final int? id;
+/// وجهة أيقونة أو زر: offers | latest | best | rated | category | product | url | none
+class LinkTarget {
+  final String to;
+  final String value;
+  const LinkTarget(this.to, [this.value = '']);
+
+  factory LinkTarget.fromJson(dynamic m) =>
+      m is Map ? LinkTarget('${m['to'] ?? 'none'}', '${m['value'] ?? ''}'.trim()) : const LinkTarget('none');
+
+  String _digits(String pattern) {
+    final m = RegExp(pattern).firstMatch(value);
+    if (m != null) return m.group(1)!;
+    return RegExp(r'^\d+$').hasMatch(value) ? value : '';
+  }
+
+  int? get categoryId => int.tryParse(_digits(r'/c(\d+)'));
+
+  /// بنفس صيغة بيانات الإشعار — يفتحها Push.open.
+  Map<String, dynamic>? data({String title = ''}) {
+    switch (to) {
+      case 'offers':
+      case 'latest':
+      case 'best':
+      case 'rated':
+        return {to: '1'};
+      case 'category':
+        final id = _digits(r'/c(\d+)');
+        return id.isEmpty ? null : {'category_id': id, 'title': title};
+      case 'product':
+        final id = _digits(r'/p(\d+)');
+        return id.isEmpty ? (value.startsWith('http') ? {'url': value} : null) : {'product_id': id};
+      case 'url':
+        return value.isEmpty ? null : {'url': value};
+    }
+    return null;
+  }
+}
+
+class IconItem {
   final String label;
   final String image;
-  final bool hidden;
-  const HomeItem({required this.type, this.id, this.label = '', this.image = '', this.hidden = false});
+  final LinkTarget link;
+  const IconItem({this.label = '', this.image = '', this.link = const LinkTarget('none')});
 
-  factory HomeItem.fromJson(Map m, String labelKey) => HomeItem(
-        type: '${m['type'] ?? 'category'}',
-        id: int.tryParse('${m['id'] ?? ''}'),
-        label: '${m[labelKey] ?? ''}'.trim(),
+  factory IconItem.fromJson(Map m) => IconItem(
+        label: '${m['label'] ?? ''}'.trim(),
         image: '${m['image'] ?? ''}'.trim(),
+        link: LinkTarget.fromJson(m['link']),
+      );
+}
+
+/// قطعة في الرئيسية: banners | features | circles | products
+class HomeBlock {
+  final String type;
+  final bool hidden;
+  final String title;
+  // أيقونات
+  final int rows; // 1 صف · 2 صفين · 3 شبكة كاملة
+  final List<IconItem> items;
+  // منتجات
+  final String source; // latest | best | rated | offers | category
+  final int? id;
+  final String style; // rail | grid
+  final int limit;
+
+  const HomeBlock({
+    required this.type,
+    this.hidden = false,
+    this.title = '',
+    this.rows = 1,
+    this.items = const [],
+    this.source = 'latest',
+    this.id,
+    this.style = 'rail',
+    this.limit = 10,
+  });
+
+  factory HomeBlock.fromJson(Map m) => HomeBlock(
+        type: '${m['type'] ?? ''}',
         hidden: m['hidden'] == true,
+        title: '${m['title'] ?? ''}'.trim(),
+        rows: (int.tryParse('${m['rows'] ?? ''}') ?? 1).clamp(1, 3),
+        items: (m['items'] is List ? m['items'] as List : const [])
+            .whereType<Map>()
+            .map(IconItem.fromJson)
+            .toList(),
+        source: '${m['source'] ?? 'latest'}',
+        id: int.tryParse('${m['id'] ?? ''}'),
+        style: m['style'] == 'grid' ? 'grid' : 'rail',
+        limit: (int.tryParse('${m['limit'] ?? ''}') ?? 10).clamp(2, 40),
       );
 }
 
@@ -33,7 +109,7 @@ class PopupConfig {
   final String title;
   final String body;
   final String button;
-  final String open; // none | offers | latest | product | category | url
+  final String open; // none | offers | latest | best | product | category | url
   final String value;
   final String freq; // once | daily | always
   const PopupConfig({
@@ -64,49 +140,47 @@ class PopupConfig {
 }
 
 class AppConfig {
-  final List<HomeItem> circles;
-  final List<HomeItem> rails;
+  final List<HomeBlock> blocks;
   final PopupConfig? popup;
-  const AppConfig({required this.circles, required this.rails, this.popup});
+  const AppConfig({required this.blocks, this.popup});
 
-  factory AppConfig.fromJson(Map<String, dynamic> m) {
-    List<HomeItem> list(String k, String labelKey) => (m[k] is List ? m[k] as List : const [])
-        .whereType<Map>()
-        .map((e) => HomeItem.fromJson(e, labelKey))
-        .where((e) => e.type != 'category' || e.id != null)
-        .toList();
-    return AppConfig(
-      circles: list('circles', 'label'),
-      rails: list('rails', 'title'),
-      popup: m['popup'] is Map ? PopupConfig.fromJson(m['popup'] as Map) : null,
-    );
-  }
+  factory AppConfig.fromJson(Map<String, dynamic> m) => AppConfig(
+        blocks: (m['blocks'] is List ? m['blocks'] as List : const [])
+            .whereType<Map>()
+            .map(HomeBlock.fromJson)
+            .where((b) => const {'banners', 'features', 'circles', 'products'}.contains(b.type))
+            .toList(),
+        popup: m['popup'] is Map ? PopupConfig.fromJson(m['popup'] as Map) : null,
+      );
 }
 
 class RemoteConfig {
   RemoteConfig._();
   static final instance = RemoteConfig._();
 
-  static const _cacheKey = 'remote_config_v1';
+  static const _cacheKey = 'remote_config_v2';
 
   /// null = نستخدم الترتيب الافتراضي المبني في التطبيق.
   final config = ValueNotifier<AppConfig?>(null);
   Future<void>? _loading;
 
   /// يحمّل النسخة المحفوظة فورًا ثم يجلب الأحدث من اللوحة.
-  Future<void> ensure() => _loading ??= _load();
+  Future<void> ensure() => _loading ??= _load(useCache: true);
 
-  Future<void> _load() async {
+  /// يجلب الأحدث من اللوحة (عند رجوع العميل للتطبيق).
+  Future<void> refresh() => _load(useCache: false);
+
+  Future<void> _load({required bool useCache}) async {
     SharedPreferences? prefs;
     try {
       prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString(_cacheKey);
+      final cached = useCache ? prefs.getString(_cacheKey) : null;
       if (cached != null) _apply(cached);
     } catch (_) {}
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 6);
-      final req = await client.getUrl(Uri.parse(remoteConfigUrl));
-      final res = await req.close().timeout(const Duration(seconds: 8));
+      final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+      final req = await client.getUrl(Uri.parse('$remoteConfigUrl?t=${DateTime.now().millisecondsSinceEpoch}'));
+      final res = await req.close().timeout(const Duration(seconds: 12));
       if (res.statusCode == 200) {
         final body = await res.transform(utf8.decoder).join();
         if (_apply(body)) await prefs?.setString(_cacheKey, body);

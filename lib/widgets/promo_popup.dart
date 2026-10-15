@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -11,23 +12,49 @@ import 'motion.dart';
 
 /// البوب اب الترويجي — يُدار من «لوحة برونز».
 class PromoPopup {
+  static bool _showing = false;
+
+  /// ينتظر وصول الإعدادات (حتى 15 ثانية) ثم يعرض البوب اب إن كان مفعّلًا.
+  static Future<void> showWhenReady() async {
+    final cfg = RemoteConfig.instance.config;
+    if (cfg.value == null) {
+      final done = Completer<void>();
+      void listener() {
+        if (cfg.value != null && !done.isCompleted) done.complete();
+      }
+
+      cfg.addListener(listener);
+      try {
+        await done.future.timeout(const Duration(seconds: 15));
+      } catch (_) {
+      } finally {
+        cfg.removeListener(listener);
+      }
+    }
+    await maybeShow();
+  }
+
   static Future<void> maybeShow() async {
+    if (_showing) return;
     final p = RemoteConfig.instance.config.value?.popup;
     if (p == null || !p.active || p.isEmpty || p.id.isEmpty) return;
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final key = 'popup_seen_${p.id}';
-      final last = prefs.getString(key);
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      if (p.freq == 'once' && last != null) return;
-      if (p.freq == 'daily' && last == today) return;
-      await prefs.setString(key, today);
-    } catch (_) {}
-
     final context = navigatorKey.currentContext;
     if (context == null || !context.mounted) return;
-    await showGeneralDialog(
+
+    SharedPreferences? prefs;
+    final key = 'popup_seen_${p.id}';
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    try {
+      prefs = await SharedPreferences.getInstance();
+      final last = prefs.getString(key);
+      if (p.freq == 'once' && last != null) return;
+      if (p.freq == 'daily' && last == today) return;
+    } catch (_) {}
+
+    if (!context.mounted) return;
+    _showing = true;
+    final dialog = showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'إغلاق',
@@ -45,32 +72,16 @@ class PromoPopup {
         );
       },
     );
+    // يُسجَّل «انعرض» بعد ما يطلع فعلًا
+    try {
+      await prefs?.setString(key, today);
+    } catch (_) {}
+    await dialog;
+    _showing = false;
   }
 
   /// وجهة زر البوب اب بصيغة بيانات الإشعار نفسها.
-  static Map<String, dynamic>? _target(PopupConfig p) {
-    String digits(String pattern) {
-      final m = RegExp(pattern).firstMatch(p.value);
-      if (m != null) return m.group(1)!;
-      return RegExp(r'^\d+$').hasMatch(p.value) ? p.value : '';
-    }
-
-    switch (p.open) {
-      case 'offers':
-        return {'offers': '1'};
-      case 'latest':
-        return {'latest': '1'};
-      case 'product':
-        final id = digits(r'/p(\d+)');
-        return id.isEmpty ? null : {'product_id': id};
-      case 'category':
-        final id = digits(r'/c(\d+)');
-        return id.isEmpty ? null : {'category_id': id};
-      case 'url':
-        return p.value.isEmpty ? null : {'url': p.value};
-    }
-    return null;
-  }
+  static Map<String, dynamic>? _target(PopupConfig p) => LinkTarget(p.open, p.value).data(title: p.title);
 }
 
 class _PopupCard extends StatelessWidget {
