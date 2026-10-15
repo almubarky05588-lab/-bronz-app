@@ -21,6 +21,7 @@ class _ProductScreenState extends State<ProductScreen> {
   bool _loadingDetails = true;
   int _image = 0;
   int _qty = 1;
+  bool _justAdded = false;
 
   @override
   void initState() {
@@ -39,19 +40,17 @@ class _ProductScreenState extends State<ProductScreen> {
     if (mounted) setState(() => _loadingDetails = false);
   }
 
-  void _add() {
+  void _openCart() {
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen()));
+  }
+
+  Future<void> _add() async {
     Cart.instance.add(_p, qty: _qty);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: const Text('أُضيف إلى السلة'),
-        action: SnackBarAction(
-          label: 'السلة',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CartScreen()),
-          ),
-        ),
-      ));
+    showBronzToast(context, 'أُضيف إلى السلة', actionLabel: 'السلة', onAction: _openCart);
+    setState(() => _justAdded = true);
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (mounted) setState(() => _justAdded = false);
   }
 
   @override
@@ -60,35 +59,47 @@ class _ProductScreenState extends State<ProductScreen> {
     final desc = stripHtml(_p.description);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         actions: [
           ListenableBuilder(
             listenable: Cart.instance,
             builder: (context, _) => IconButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen()),
-              ),
+              onPressed: _openCart,
               icon: Badge(
+                backgroundColor: BronzColors.ink,
+                textColor: Colors.white,
                 isLabelVisible: Cart.instance.count > 0,
                 label: Text('${Cart.instance.count}'),
                 child: const Icon(Icons.shopping_bag_outlined),
               ),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListView(
         children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: PageView.builder(
-              itemCount: _p.images.isEmpty ? 1 : _p.images.length,
-              onPageChanged: (i) => setState(() => _image = i),
-              itemBuilder: (_, i) => NetImage(_p.images.isEmpty ? _p.image : _p.images[i]),
+          Container(
+            color: Colors.white,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PageView.builder(
+                itemCount: _p.images.isEmpty ? 1 : _p.images.length,
+                onPageChanged: (i) => setState(() => _image = i),
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: NetImage(_p.images.isEmpty ? _p.image : _p.images[i]),
+                ),
+              ),
             ),
           ),
           if (_p.images.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.only(bottom: 14),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -107,70 +118,135 @@ class _ProductScreenState extends State<ProductScreen> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_p.name, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.35)),
-                const SizedBox(height: 10),
+                Text(_p.name, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800, height: 1.4)),
+                const SizedBox(height: 12),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(formatPrice(_p.price),
-                        style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                        style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
                     if (_p.oldPrice != null) ...[
                       const SizedBox(width: 10),
-                      Text(
-                        formatPrice(_p.oldPrice!),
-                        style: t.bodyLarge?.copyWith(
-                          color: BronzColors.muted,
-                          decoration: TextDecoration.lineThrough,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Text(
+                          formatPrice(_p.oldPrice!),
+                          style: t.bodyLarge?.copyWith(
+                            color: BronzColors.muted,
+                            decoration: TextDecoration.lineThrough,
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Row(
+                const SizedBox(height: 18),
+                const Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Icon(Icons.verified_outlined, size: 18, color: BronzColors.gold),
-                    SizedBox(width: 6),
-                    Text('أصلي 100% بضمان متجر برونز'),
+                    _Perk(Icons.verified_outlined, 'أصلي 100%'),
+                    _Perk(Icons.local_shipping_outlined, 'شحن لكل المدن'),
+                    _Perk(Icons.lock_outline_rounded, 'دفع آمن'),
                   ],
                 ),
-                const Divider(height: 32),
+                const SizedBox(height: 24),
                 Text('الوصف', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 if (desc.isNotEmpty)
-                  Text(desc, style: t.bodyMedium?.copyWith(height: 1.7))
+                  Text(desc, style: t.bodyMedium?.copyWith(height: 1.8, color: const Color(0xFF3A3632)))
                 else if (_loadingDetails)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
+                  Column(
+                    children: List.generate(
+                      4,
+                      (i) => Container(
+                        height: 12,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: BronzColors.soft,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ),
                   )
                 else
-                  const Text('لا يوجد وصف', style: TextStyle(color: BronzColors.muted)),
-                const SizedBox(height: 24),
+                  const Text('لا يوجد وصف لهذا المنتج', style: TextStyle(color: BronzColors.muted)),
+                const SizedBox(height: 32),
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Row(
-            children: [
-              QtyStepper(value: _qty, onChanged: (v) => setState(() => _qty = v)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _p.available ? _add : null,
-                  child: Text(_p.available ? 'أضف إلى السلة' : 'نفدت الكمية'),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: BronzColors.bg,
+          border: Border(top: BorderSide(color: Color(0xFFECE7DF))),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Row(
+              children: [
+                QtyStepper(value: _qty, onChanged: (v) => setState(() => _qty = v)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _p.available ? _add : null,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _justAdded
+                          ? const Row(
+                              key: ValueKey('added'),
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_rounded, size: 20),
+                                SizedBox(width: 6),
+                                Text('تمت الإضافة', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                              ],
+                            )
+                          : Text(
+                              _p.available ? 'أضف إلى السلة · ${formatPrice(_p.price * _qty)}' : 'نفدت الكمية',
+                              key: const ValueKey('add'),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                            ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Perk extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _Perk(this.icon, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFECE7DF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: BronzColors.gold),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
