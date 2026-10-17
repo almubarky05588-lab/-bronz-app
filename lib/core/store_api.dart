@@ -30,12 +30,40 @@ class StoreApi {
 
   // ───────── المنتجات ─────────
 
-  static Future<List<Product>> _list(String source, {Object? value, int page = 1}) async {
-    final res = await _b.call('products', {
-      'source': source,
-      if (value != null) 'value': value,
-      if (page > 1) 'page': page,
-    });
+  /// روابط الصفحات التالية كما ترجعها سلة (ترقيم بالمؤشر cursor).
+  /// المفتاح: «مصدر|قيمة|رقم الصفحة» — القيمة '' تعني ما فيه صفحات بعدها.
+  static final _next = <String, String>{};
+
+  static String? _pickUrl(dynamic v) => (v is String && v.startsWith('http')) ? v : null;
+
+  /// يقرأ رابط الصفحة التالية من رد سلة بأي صيغة معروفة.
+  /// يرجع null لو الرد ما فيه ترقيم أصلًا، و'' لو فيه ترقيم بس هذي آخر صفحة.
+  static String? _nextUrl(dynamic res) {
+    if (res is! Map) return null;
+    var paged = false;
+    for (final k in const ['cursor', 'pagination', 'links']) {
+      final m = res[k];
+      if (m is! Map) continue;
+      paged = true;
+      final links = m['links'];
+      final n = _pickUrl(m['next']) ??
+          _pickUrl(m['next_page_url']) ??
+          (links is Map ? _pickUrl(links['next']) : null);
+      if (n != null) return n;
+    }
+    final n = _pickUrl(res['next_page_url']) ?? _pickUrl(res['next']);
+    if (n != null) return n;
+    return paged ? '' : null;
+  }
+
+  /// يجيب صفحة: أول صفحة بالطلب العادي، وبعدها برابط «التالي» من سلة إن وُجد.
+  static Future<List<Product>> _page(String key, int page, Future<dynamic> Function() first) async {
+    final dynamic res;
+    final known = page > 1 ? _next['$key|$page'] : null;
+    if (known == '') return const []; // وصلنا لآخر صفحة
+    res = known != null ? await _b.get(known) : await first();
+    final n = _nextUrl(res);
+    if (n != null) _next['$key|${page + 1}'] = n;
     return extractList(res)
         .whereType<Map>()
         .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
@@ -43,21 +71,25 @@ class StoreApi {
         .toList();
   }
 
+  static Future<List<Product>> _list(String source, {Object? value, int page = 1}) =>
+      _page('$source|${value ?? ''}', page, () => _b.call('products', {
+            'source': source,
+            if (value != null) 'value': value,
+            if (page > 1) 'page': page,
+          }));
+
   /// ترتيب خاص من سلة (الأكثر مبيعًا / الأعلى تقييمًا) عبر واجهة المتجر نفسها.
-  static Future<List<Product>> _sorted(String sort, int page) async {
-    final res = await _b.get('products?source=latest&sort=$sort${page > 1 ? '&page=$page' : ''}');
-    return extractList(res)
-        .whereType<Map>()
-        .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-        .where((p) => p.id != 0)
-        .toList();
-  }
+  static Future<List<Product>> _sorted(String sort, int page) => _page(
+        'sorted|$sort',
+        page,
+        () => _b.get('products?source=latest&sort=$sort${page > 1 ? '&page=$page' : ''}'),
+      );
 
   /// الأكثر مبيعًا.
   static Future<List<Product>> bestSellers({int page = 1}) async {
     try {
       final l = await _sorted('bestSell', page);
-      if (l.isNotEmpty) return l;
+      if (l.isNotEmpty || page > 1) return l;
     } catch (_) {}
     try {
       return await _list('sales', page: page);
