@@ -181,10 +181,49 @@ function clean(c) {
   return { v: Date.now(), blocks, popup };
 }
 
+// ───────── الروابط المختصرة ─────────
+
+const HAS_ID = /\/[pc]\d+(?:$|[\/?#])|\/category\//;
+
+/** يحوّل رابط سلة المختصر (مثل bronz-sa.com/ar/gZoZmEO) إلى الرابط الكامل اللي فيه رقم المنتج. */
+async function resolveLink(v) {
+  try {
+    const u = new URL(String(v || '').trim());
+    if (!u.hostname.endsWith(STORE_HOST) || HAS_ID.test(u.pathname)) return v;
+    const r = await fetch(u.toString(), { redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (iPhone) BronzPanel' } });
+    if (HAS_ID.test(new URL(r.url).pathname)) return r.url;
+    const html = await r.text();
+    const m = html.match(/<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)/i)
+      || html.match(/<meta[^>]+property=["']og:url["'][^>]*content=["']([^"']+)/i);
+    const full = m ? m[1].replace(/&amp;/g, '&') : '';
+    return full && HAS_ID.test(new URL(full, u).pathname) ? new URL(full, u).toString() : v;
+  } catch {
+    return v;
+  }
+}
+
+/** يحلّ كل الروابط المختصرة في الإعدادات قبل الحفظ (البوب اب + الأيقونات). */
+async function resolveLinks(c) {
+  const jobs = [];
+  if (['product', 'url'].includes(c.popup.open) && c.popup.value) {
+    jobs.push(resolveLink(c.popup.value).then((v) => { c.popup.value = v; }));
+  }
+  for (const b of c.blocks) {
+    if (b.type !== 'circles') continue;
+    for (const it of b.items) {
+      if (['product', 'url'].includes(it.link.to) && it.link.value) {
+        jobs.push(resolveLink(it.link.value).then((v) => { it.link.value = v; }));
+      }
+    }
+  }
+  await Promise.all(jobs);
+}
+
 async function saveConfig(req, env) {
   const b = await req.json().catch(() => ({}));
   if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز غير صحيح' }, 403);
   const c = clean(b);
+  await resolveLinks(c);
   await env.CONFIG.put('config', JSON.stringify(c));
   return json({ ok: true, config: c });
 }
