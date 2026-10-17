@@ -5,7 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-BUILD_NUMBER="${1:-1}"
+# +1000 حتى يكون رقم كل بناء جديد (TestFlight أو المتجر) أكبر من آخر رقم انرفع لآبل
+BUILD_NUMBER="$(( ${1:-1} + 1000 ))"
 BUNDLE_ID="sa.almubarky.bronz"
 
 echo "▶ توليد مجلد iOS"
