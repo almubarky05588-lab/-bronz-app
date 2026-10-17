@@ -40,11 +40,14 @@ class Push {
     } catch (_) {}
   }
 
-  /// نافذة إذن الإشعارات (تظهر مرة واحدة).
+  /// نافذة إذن الإشعارات — مرة وحدة بالعمر، وما تعلّق التطبيق أبدًا:
+  /// لو الإذن موجود ما نطلبه، ولو مرفوض سابقًا ما نفتح نافذة «الإعدادات»،
+  /// وحد أقصى 10 ثواني انتظار (عشان البوب اب اللي بعدها يطلع دايمًا).
   static Future<void> askPermission() async {
     if (!_ready) return;
     try {
-      await OneSignal.Notifications.requestPermission(true);
+      if (OneSignal.Notifications.permission) return;
+      await OneSignal.Notifications.requestPermission(false).timeout(const Duration(seconds: 10));
     } catch (_) {}
   }
 
