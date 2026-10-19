@@ -47,21 +47,15 @@ class _ShellState extends State<Shell> {
         index: _index,
         children: const [HomeScreen(), CategoriesScreen(), CartScreen(), AccountScreen()],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Container(
-            height: 68,
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: BronzColors.line),
-              boxShadow: const [
-                BoxShadow(color: Color(0x14000000), blurRadius: 24, offset: Offset(0, 8)),
-              ],
-            ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: BronzColors.bg,
+          border: Border(top: BorderSide(color: BronzColors.line)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
             child: ListenableBuilder(
               listenable: Cart.instance,
               builder: (context, _) => Row(
@@ -123,38 +117,37 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = selected ? BronzColors.ink : BronzColors.faint;
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: selected ? BronzColors.soft : Colors.transparent,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Badge(
-                isLabelVisible: badge > 0,
-                backgroundColor: BronzColors.ink,
-                textColor: Colors.white,
-                label: Text('$badge', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                child: Icon(selected ? activeIcon : icon, size: 23, color: BronzColors.ink),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Badge(
+              isLabelVisible: badge > 0,
+              backgroundColor: BronzColors.ink,
+              textColor: Colors.white,
+              label: Text('$badge', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: Icon(selected ? activeIcon : icon, key: ValueKey(selected), size: 24, color: color),
               ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                  color: selected ? BronzColors.ink : BronzColors.muted,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: color),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: selected ? 4 : 0,
+              height: 4,
+              decoration: const BoxDecoration(color: BronzColors.ink, shape: BoxShape.circle),
+            ),
+          ],
         ),
       ),
     );
