@@ -1,6 +1,6 @@
 name: phosphor_flutter
-description: طبقة أيقونات محلية لتطبيق برونز — تربط أسماء الأيقونات بأيقونات آبل (Cupertino) المدمجة.
-version: 9.0.0
+description: أيقونات برونز — خط أيقونات خاص مرسوم خطيًا (BronzIcons) بأسماء Phosphor.
+version: 10.0.0
 publish_to: "none"
 
 environment:
@@ -10,4 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+
+flutter:
+  fonts:
+    - family: BronzIcons
+      fonts:
+        - asset: fonts/BronzIcons.ttf
