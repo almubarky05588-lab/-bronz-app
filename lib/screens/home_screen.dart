@@ -134,7 +134,7 @@ class HomeScreen extends StatelessWidget {
         height: 112,
         child: ListView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           children: tiles,
         ),
       );
@@ -191,8 +191,8 @@ class HomeScreen extends StatelessWidget {
 
   String _greeting() {
     final h = DateTime.now().hour;
-    if (h >= 4 && h < 12) return 'صباح الخير ☀️';
-    return 'مساء الخير ✨';
+    if (h >= 4 && h < 12) return 'صباح الخير';
+    return 'مساء الخير';
   }
 
   @override
@@ -206,16 +206,17 @@ class HomeScreen extends StatelessWidget {
             // ─── الرأس: الشعار + التحية + الإشعارات ───
             FadeSlideIn(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Row(
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const BronzLogo(width: 118),
+                        const BronzLogo(width: 112),
+                        const SizedBox(height: 2),
                         Text(
-                          '${_greeting()}  وش عطرك اليوم؟',
-                          style: const TextStyle(fontSize: 13, color: BronzColors.muted, fontWeight: FontWeight.w600),
+                          '${_greeting()}، وش عطرك اليوم؟',
+                          style: const TextStyle(fontSize: 12.5, color: BronzColors.muted),
                         ),
                       ],
                     ),
@@ -236,29 +237,25 @@ class HomeScreen extends StatelessWidget {
             FadeSlideIn(
               order: 1,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
                 child: Pressable(
                   scale: 0.98,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SearchScreen(autofocus: true)),
                   ),
                   child: Container(
-                    height: 52,
+                    height: 50,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(26),
-                      border: Border.all(color: BronzColors.line),
-                      boxShadow: const [
-                        BoxShadow(color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 4)),
-                      ],
+                      color: BronzColors.soft,
+                      borderRadius: BorderRadius.circular(BronzRadius.field),
                     ),
                     child: Row(
                       children: [
-                        Icon(PhosphorIcons.magnifyingGlass(), size: 21, color: BronzColors.muted),
+                        Icon(PhosphorIcons.magnifyingGlass(), size: 20, color: BronzColors.muted),
                         const SizedBox(width: 10),
-                        const Text('ابحث عن عطر، ماركة، أو منتج…',
-                            style: TextStyle(color: BronzColors.muted, fontSize: 14.5)),
+                        const Text('ابحث عن عطر، ماركة أو منتج',
+                            style: TextStyle(color: BronzColors.faint, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -289,7 +286,7 @@ class _Features extends StatelessWidget {
     return Container(
       color: BronzColors.ink,
       child: Marquee(
-        height: 38,
+        height: 40,
         children: [
           _MarqueeItem(PhosphorIcons.sealCheck(), 'أصلي 100% بضمان برونز'),
           _MarqueeItem(PhosphorIcons.truck(), 'شحن سريع لكل مدن المملكة'),
@@ -313,11 +310,11 @@ class _MarqueeItem extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: BronzColors.gold),
+          Icon(icon, size: 16, color: Colors.white),
           const SizedBox(width: 8),
           Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(width: 18),
-          const Text('✦', style: TextStyle(color: BronzColors.gold, fontSize: 10)),
+          const Text('•', style: TextStyle(color: BronzColors.goldSoft, fontSize: 12)),
         ],
       ),
     );
@@ -351,30 +348,16 @@ class _Circle extends StatelessWidget {
             Container(
               width: 74,
               height: 74,
-              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE9DCC6), Color(0xFFB08D57)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                ),
+                color: dark ? BronzColors.ink : BronzColors.tile,
+                borderRadius: BorderRadius.circular(22),
               ),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: ClipOval(
-                  child: image.isNotEmpty
-                      ? NetImage(image, padding: 10, background: Colors.white)
-                      : categoryId != null
-                          ? CategoryCover(categoryId: categoryId!, padding: 10)
-                          : Container(
-                              color: dark ? BronzColors.ink : Colors.white,
-                              alignment: Alignment.center,
-                              child: Icon(icon, size: 28, color: dark ? BronzColors.gold : BronzColors.ink),
-                            ),
-                ),
-              ),
+              clipBehavior: Clip.antiAlias,
+              child: image.isNotEmpty
+                  ? NetImage(image, padding: 10, background: BronzColors.tile)
+                  : categoryId != null
+                      ? CategoryCover(categoryId: categoryId!, padding: 10)
+                      : Center(child: Icon(icon, size: 26, color: dark ? Colors.white : BronzColors.ink)),
             ),
             const SizedBox(height: 8),
             Text(
@@ -382,7 +365,7 @@ class _Circle extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),

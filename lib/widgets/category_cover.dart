@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../core/store_api.dart';
+import '../core/theme.dart';
 import 'common.dart';
 
-/// صورة غلاف القسم (أول منتج فيه) — على خلفية بيضاء تمامًا
-/// حتى تذوب خلفية صورة المنتج البيضاء ولا يظهر مربع داخل الدائرة.
+/// صورة غلاف القسم (أول منتج فيه) — خلفية الصورة البيضاء تذوب في لون البطاقة.
 class CategoryCover extends StatelessWidget {
   final int categoryId;
   final double padding;
-  const CategoryCover({super.key, required this.categoryId, this.padding = 8});
+  final Color background;
+  const CategoryCover({super.key, required this.categoryId, this.padding = 8, this.background = BronzColors.tile});
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +17,8 @@ class CategoryCover extends StatelessWidget {
       future: StoreApi.categoryCover(categoryId),
       builder: (context, s) {
         final url = s.data ?? '';
-        if (url.isEmpty) return const ColoredBox(color: Colors.white);
-        return NetImage(url, padding: padding, background: Colors.white);
+        if (url.isEmpty) return ColoredBox(color: background);
+        return NetImage(url, padding: padding, background: background);
       },
     );
   }
