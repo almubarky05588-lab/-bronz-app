@@ -9,6 +9,11 @@ cd "$ROOT"
 BUILD_NUMBER="$(( ${1:-1} + 1000 ))"
 BUNDLE_ID="sa.almubarky.bronz"
 
+echo "▶ خط الأيقونات (BronzIcons)"
+python3 -m venv /tmp/iconenv
+/tmp/iconenv/bin/pip install -q picosvg fonttools skia-pathops
+/tmp/iconenv/bin/python "$ROOT/ci/build_icons.py" "$ROOT/packages/phosphor_flutter/fonts/BronzIcons.ttf"
+
 echo "▶ توليد مجلد iOS"
 flutter create --org sa.almubarky --project-name bronz_app --platforms=ios .
 
