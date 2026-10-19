@@ -1,10 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/catalog.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
+import '../widgets/common.dart';
 import '../widgets/product_grid.dart';
+import 'search_screen.dart';
+
+/// رأس الصفحات الداخلية (تصميم v2): رجوع · العنوان · بحث.
+class BronzHeader extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final bool search;
+  const BronzHeader({super.key, required this.title, this.subtitle, this.search = true});
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+      child: Row(
+        children: [
+          if (canPop)
+            RoundIcon(icon: PhosphorIcons.caretRight(), onTap: () => Navigator.of(context).maybePop())
+          else
+            const SizedBox(width: 42),
+          Expanded(
+            child: Column(
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                ),
+                if (subtitle != null)
+                  Text(subtitle!, style: const TextStyle(fontSize: 12, color: BronzColors.muted)),
+              ],
+            ),
+          ),
+          if (search)
+            RoundIcon(
+              icon: PhosphorIcons.magnifyingGlass(),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SearchScreen(autofocus: true)),
+              ),
+            )
+          else
+            const SizedBox(width: 42),
+        ],
+      ),
+    );
+  }
+}
 
 class CategoryScreen extends StatefulWidget {
   final StoreCategory category;
@@ -21,28 +71,31 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Widget build(BuildContext context) {
     final c = widget.category;
     return Scaffold(
-      appBar: AppBar(title: Text(c.name)),
-      body: Column(
-        children: [
-          if (c.children.isNotEmpty)
-            SizedBox(
-              height: 50,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                children: [
-                  _chip('الكل', c.id),
-                  for (final s in c.children) _chip(s.name, s.id),
-                ],
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            BronzHeader(title: c.name),
+            if (c.children.isNotEmpty)
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
+                  children: [
+                    _chip('الكل', c.id),
+                    for (final s in c.children) _chip(s.name, s.id),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ProductGrid(
+                key: ValueKey(_selected),
+                loader: (p) => StoreApi.byCategory(_selected, page: p),
               ),
             ),
-          Expanded(
-            child: ProductGrid(
-              key: ValueKey(_selected),
-              loader: (p) => StoreApi.byCategory(_selected, page: p),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -63,14 +116,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? BronzColors.ink : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(color: on ? BronzColors.ink : BronzColors.line),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              fontWeight: on ? FontWeight.w700 : FontWeight.w500,
               color: on ? Colors.white : BronzColors.ink,
             ),
           ),
@@ -89,8 +142,15 @@ class ProductListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: ProductGrid(loader: loader),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            BronzHeader(title: title),
+            Expanded(child: ProductGrid(loader: loader)),
+          ],
+        ),
+      ),
     );
   }
 }

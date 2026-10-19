@@ -74,9 +74,9 @@ class _ProductGridState extends State<ProductGrid> {
 
   static const _delegate = SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: 2,
-    mainAxisSpacing: 12,
-    crossAxisSpacing: 12,
-    childAspectRatio: 0.58,
+    mainAxisSpacing: 22,
+    crossAxisSpacing: 14,
+    childAspectRatio: 0.56,
   );
 
   @override
@@ -97,14 +97,14 @@ class _ProductGridState extends State<ProductGrid> {
         slivers: [
           if (widget.header != null) SliverToBoxAdapter(child: widget.header),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
                 (c, i) => skeleton
                     ? Container(
                         decoration: BoxDecoration(
                           color: BronzColors.tile,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(BronzRadius.tile),
                         ),
                       )
                     : ProductCard(product: _items[i]),

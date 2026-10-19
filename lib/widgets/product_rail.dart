@@ -13,19 +13,20 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 26, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
       child: Row(
         children: [
-          Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+          Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
           const Spacer(),
           if (onMore != null)
             GestureDetector(
               onTap: onMore,
               child: Row(
                 children: [
-                  const Text('عرض الكل', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+                  const Text('عرض الكل',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: BronzColors.muted)),
                   const SizedBox(width: 2),
-                  Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), size: 14),
+                  Icon(PhosphorIcons.caretLeft(), size: 15, color: BronzColors.muted),
                 ],
               ),
             ),
@@ -60,14 +61,14 @@ class _ProductRailState extends State<ProductRail> {
 
   static const _gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
     crossAxisCount: 2,
-    mainAxisSpacing: 12,
-    crossAxisSpacing: 12,
-    childAspectRatio: 0.58,
+    mainAxisSpacing: 22,
+    crossAxisSpacing: 14,
+    childAspectRatio: 0.56,
   );
 
   Widget _placeholder() => Container(
-        width: 170,
-        decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(20)),
+        width: 164,
+        decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(BronzRadius.tile)),
       );
 
   Widget _retry() => Center(
@@ -94,30 +95,30 @@ class _ProductRailState extends State<ProductRail> {
               : GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   gridDelegate: _gridDelegate,
                   itemCount: loading ? 4 : list.length,
                   itemBuilder: (_, i) => loading ? _placeholder() : ProductCard(product: list[i]),
                 );
         } else {
           body = SizedBox(
-            height: 304,
+            height: 316,
             child: loading
                 ? ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: 3,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
                     itemBuilder: (_, __) => _placeholder(),
                   )
                 : s.hasError
                     ? _retry()
                     : ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: list.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (_, i) => ProductCard(product: list[i], width: 170),
+                        separatorBuilder: (_, __) => const SizedBox(width: 14),
+                        itemBuilder: (_, i) => ProductCard(product: list[i], width: 164),
                       ),
           );
         }
