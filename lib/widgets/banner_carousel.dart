@@ -116,11 +116,11 @@ class _BannerCarouselState extends State<BannerCarousel> {
     final items = _items;
     if (items == null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: AspectRatio(
           aspectRatio: 2.0,
           child: Container(
-            decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(22)),
+            decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(BronzRadius.hero)),
           ),
         ),
       );
@@ -129,9 +129,9 @@ class _BannerCarouselState extends State<BannerCarousel> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(BronzRadius.hero),
             child: AspectRatio(
               aspectRatio: _ratio,
               child: PageView.builder(
@@ -164,7 +164,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
                   width: i == _index ? 20 : 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: i == _index ? BronzColors.ink : const Color(0xFFD6D0C7),
+                    color: i == _index ? BronzColors.ink : BronzColors.line,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -182,12 +182,12 @@ class _FallbackHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(BronzRadius.hero),
         gradient: const LinearGradient(
-          colors: [Color(0xFF111111), Color(0xFF3A2E22)],
+          colors: [Color(0xFF111111), Color(0xFF2A2A2A)],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
