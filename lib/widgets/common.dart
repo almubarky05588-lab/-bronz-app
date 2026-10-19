@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/theme.dart';
@@ -119,7 +120,7 @@ class _BronzToastState extends State<_BronzToast> with SingleTickerProviderState
                 ),
                 child: Row(
                   children: [
-                    Icon(widget.icon, color: BronzColors.gold, size: 22),
+                    Icon(widget.icon, color: Colors.white, size: 22),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -180,29 +181,25 @@ class BrandSplash extends StatelessWidget {
   }
 }
 
-/// شعار برونز الأصلي مفرّغًا: الخلفية البيضاء تذوب في لون الشاشة
-/// (دمج بالضرب Multiply) فلا يبقى إلا الشعار الأسود بالتاج.
+/// شعار برونز الأصلي (متّجه SVG بالتاج) — حاد بأي مقاس، ويتلوّن (أبيض فوق الخلفيات الداكنة).
 class BronzLogo extends StatelessWidget {
   final double width;
-  final Color background;
-  const BronzLogo({super.key, this.width = 150, this.background = BronzColors.bg});
+  final Color color;
+  final Color background; // للتوافق مع الاستخدامات القديمة — لم يعد مستخدمًا
+  const BronzLogo({
+    super.key,
+    this.width = 150,
+    this.color = BronzColors.ink,
+    this.background = BronzColors.bg,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return SvgPicture.asset(
+      'assets/branding/bronz_logo.svg',
       width: width,
-      height: width * 0.30,
-      child: ClipRect(
-        child: Image.asset(
-          'assets/branding/BRONZ_app_icon_4096.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          color: background,
-          colorBlendMode: BlendMode.multiply,
-          filterQuality: FilterQuality.high,
-          cacheWidth: 1024,
-        ),
-      ),
+      height: width * 440 / 1264,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
 }
@@ -228,21 +225,25 @@ class NetImage extends StatelessWidget {
       return Container(
         color: background,
         alignment: Alignment.center,
-        child: Icon(PhosphorIcons.image(), color: const Color(0xFFCFC8BE), size: 28),
+        child: Icon(PhosphorIcons.image(), color: BronzColors.faint, size: 28),
       );
     }
+    final image = CachedNetworkImage(
+      imageUrl: url,
+      fit: fit,
+      fadeInDuration: const Duration(milliseconds: 180),
+      placeholder: (_, __) => const SizedBox.shrink(),
+      errorWidget: (_, __, ___) => Center(
+        child: Icon(PhosphorIcons.imageBroken(), color: BronzColors.faint),
+      ),
+    );
     return Container(
       color: background,
       padding: EdgeInsets.all(padding),
-      child: CachedNetworkImage(
-        imageUrl: url,
-        fit: fit,
-        fadeInDuration: const Duration(milliseconds: 180),
-        placeholder: (_, __) => const SizedBox.shrink(),
-        errorWidget: (_, __, ___) => Center(
-          child: Icon(PhosphorIcons.imageBroken(), color: const Color(0xFFCFC8BE)),
-        ),
-      ),
+      // خلفية صور المنتجات البيضاء تذوب في لون البطاقة (دمج بالضرب) — مثل تصميم Figma
+      child: background == Colors.white
+          ? image
+          : ColorFiltered(colorFilter: ColorFilter.mode(background, BlendMode.multiply), child: image),
     );
   }
 }
@@ -310,7 +311,7 @@ class RoundIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final double size;
-  const RoundIcon({super.key, required this.icon, required this.onTap, this.size = 46});
+  const RoundIcon({super.key, required this.icon, required this.onTap, this.size = 42});
 
   @override
   Widget build(BuildContext context) {
@@ -336,40 +337,36 @@ class QtyStepper extends StatelessWidget {
   final int min;
   const QtyStepper({super.key, required this.value, required this.onChanged, this.min = 1});
 
-  Widget _btn(IconData icon, VoidCallback? onTap) => InkWell(
+  Widget _btn(IconData icon, VoidCallback? onTap) => GestureDetector(
         onTap: onTap == null
             ? null
             : () {
                 HapticFeedback.selectionClick();
                 onTap();
               },
-        borderRadius: BorderRadius.circular(10),
-        child: SizedBox(
-          width: 38,
-          height: 44,
-          child: Icon(icon, size: 18, color: onTap == null ? const Color(0xFFC9C3BA) : BronzColors.ink),
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(color: BronzColors.soft, shape: BoxShape.circle),
+          child: Icon(icon, size: 16, color: onTap == null ? BronzColors.faint : BronzColors.ink),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE6E0D7)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _btn(PhosphorIcons.plus(), () => onChanged(value + 1)),
-          SizedBox(
-            width: 26,
-            child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-          ),
-          _btn(value <= 1 && min == 0 ? PhosphorIcons.trash() : PhosphorIcons.minus(), value > min ? () => onChanged(value - 1) : null),
-        ],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _btn(PhosphorIcons.plus(PhosphorIconsStyle.bold), () => onChanged(value + 1)),
+        SizedBox(
+          width: 30,
+          child: Text('$value', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        ),
+        _btn(
+          value <= 1 && min == 0 ? PhosphorIcons.trash() : PhosphorIcons.minus(PhosphorIconsStyle.bold),
+          value > min ? () => onChanged(value - 1) : null,
+        ),
+      ],
     );
   }
 }
