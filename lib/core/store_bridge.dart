@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'demo.dart';
+
 const storeUrl = 'https://bronz-sa.com/ar';
 
 class StoreError implements Exception {
@@ -53,7 +55,11 @@ class StoreBridge {
     controller.loadRequest(Uri.parse(storeUrl));
   }
 
-  Future<void> waitReady({int seconds = 25}) async {
+  /// مهلة انتظار جاهزية المتجر: أطول في وضع تصوير المتجر (المحاكي بطيء جدًا).
+  static int get readySeconds => kScreenshots ? 180 : 40;
+
+  Future<void> waitReady({int? seconds}) async {
+    seconds ??= readySeconds;
     controller; // يضمن بدء التحميل
     if (_failed) reload();
     final start = DateTime.now();
@@ -266,7 +272,7 @@ class StoreBridge {
       post({ id: '__ready', ok: true });
       return;
     }
-    if (++tries > 120) { post({ id: '__ready', ok: false }); return; }
+    if (++tries > 600) { post({ id: '__ready', ok: false }); return; } // لين دقيقتين (الشبكات البطيئة والمحاكي)
     setTimeout(wait, 200);
   })();
 })();
