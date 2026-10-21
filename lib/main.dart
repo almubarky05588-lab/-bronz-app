@@ -66,6 +66,7 @@ class _Launch extends StatefulWidget {
 class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
   bool _showSplash = true;
   bool _removeSplash = false;
+  bool _storeReady = false;
   DateTime? _pausedAt;
 
   @override
@@ -98,8 +99,9 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
     final started = DateTime.now();
     var storeReady = false;
     try {
-      await StoreBridge.instance.waitReady(seconds: 12);
+      await StoreBridge.instance.waitReady(seconds: kScreenshots ? 180 : 12);
       storeReady = true;
+      if (mounted) setState(() => _storeReady = true);
       await Future.delayed(const Duration(milliseconds: 1100));
     } catch (_) {
       // لو تأخر المتجر نكمل؛ الرئيسية تعرض حالة إعادة المحاولة بنفسها
@@ -130,7 +132,13 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const Positioned.fill(child: ColoredBox(color: BronzColors.bg, child: Shell())),
+        // في وضع تصوير المتجر ما نبني الشاشات إلا بعد جاهزية المتجر (حتى ما تتصوّر حالة خطأ)
+        Positioned.fill(
+          child: ColoredBox(
+            color: BronzColors.bg,
+            child: (!kScreenshots || _storeReady) ? const Shell() : const SizedBox.shrink(),
+          ),
+        ),
         if (!_removeSplash)
           Positioned.fill(
             child: IgnorePointer(
