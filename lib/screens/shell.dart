@@ -38,24 +38,24 @@ class _ShellState extends State<Shell> {
   }
 
   /// جولة تصوير المتجر (توقيتها يطابق ci/screenshots.sh):
-  /// الرئيسية ← الأقسام (75ث) ← صفحة قسم (110ث) ← صفحة منتج (155ث) ← حسابي (195ث)
+  /// الرئيسية ← الأقسام (90ث) ← صفحة قسم (150ث) ← صفحة منتج (210ث) ← حسابي (270ث)
   Future<void> _tour() async {
     Future<void> wait(int s) => Future.delayed(Duration(seconds: s));
-    await wait(75);
+    await wait(90);
     if (!mounted) return;
     setState(() => _index = 1);
-    await wait(35);
+    await wait(60);
     final nav = navigatorKey.currentState;
     if (nav == null || allCategories.isEmpty) return;
     final c = allCategories.first;
     nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
-    await wait(45);
+    await wait(60);
     try {
       final list = await StoreApi.byCategory(c.id);
       final p = list.where((x) => x.image.isNotEmpty).toList();
       if (p.isNotEmpty) nav.push(MaterialPageRoute(builder: (_) => ProductScreen(product: p.first)));
     } catch (_) {}
-    await wait(40);
+    await wait(55);
     nav.popUntil((r) => r.isFirst);
     if (mounted) setState(() => _index = 3);
   }

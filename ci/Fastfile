@@ -73,7 +73,7 @@ platform :ios do
     )
   end
 
-  # رفع للمتجر: النسخة + البيانات فقط — الصور والإرسال للمراجعة يدويًا من App Store Connect
+  # رفع للمتجر: النسخة + البيانات + الصور (بعد فحصها) + إرسال للمراجعة
   lane :release do
     api_key = signed_build
     deliver(
@@ -81,11 +81,17 @@ platform :ios do
       app_identifier: BUNDLE_ID,
       ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
       metadata_path: "./fastlane/metadata",
-      skip_screenshots: true,
-      submit_for_review: false,
+      screenshots_path: "./fastlane/screenshots",
+      overwrite_screenshots: true,
+      submit_for_review: true,
       automatic_release: true,
       force: true,
-      run_precheck_before_submit: false
+      run_precheck_before_submit: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false
+      }
     )
   end
 end
