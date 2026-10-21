@@ -27,17 +27,20 @@ mkdir -p "$OUT/ar-SA"
 rm -f "$OUT/ar-SA/"*.png
 shot() { sleep "$1"; xcrun simctl io "$UDID" screenshot "$OUT/ar-SA/$2.png"; echo "📸 $2"; }
 # التوقيت يطابق جولة التصوير في lib/screens/shell.dart (وقت كافٍ حتى تتحمّل كل الصور)
-shot 70 "1_home"        # الرئيسية
-shot 35 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 75ث)
-shot 45 "3_category"    # صفحة قسم (عند 110ث)
-shot 40 "4_product"     # صفحة منتج (عند 155ث)
-shot 25 "5_account"     # حسابي (عند 195ث)
+shot 80 "1_home"        # الرئيسية
+shot 50 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 90ث)
+shot 50 "3_category"    # صفحة قسم (عند 150ث)
+shot 60 "4_product"     # صفحة منتج (عند 210ث تقريبًا)
+shot 45 "5_account"     # حسابي (عند 270ث تقريبًا)
 xcrun simctl shutdown "$UDID" || true
+
+echo "▶ فحص اللقطات (لو فيها صور فاضية يتوقف البناء وما يوصل لآبل شي)"
+python3 -m venv /tmp/frameenv
+/tmp/frameenv/bin/pip install -q pillow arabic-reshaper python-bidi
+/tmp/frameenv/bin/python "$ROOT/ci/check_screenshots.py" "$OUT/ar-SA"
 
 echo "▶ إخراج الصور التسويقية (خلفية سوداء + الشعار + العنوان)"
 (
-  python3 -m venv /tmp/frameenv
-  /tmp/frameenv/bin/pip install -q pillow arabic-reshaper python-bidi
   curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
   /tmp/frameenv/bin/python "$ROOT/ci/frame_screenshots.py" "$OUT/ar-SA" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_4096.png"
 ) || echo "⚠️ تعذّر الإخراج التسويقي — نكمل باللقطات الخام"
