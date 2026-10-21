@@ -27,11 +27,11 @@ mkdir -p "$OUT/ar-SA"
 rm -f "$OUT/ar-SA/"*.png
 shot() { sleep "$1"; xcrun simctl io "$UDID" screenshot "$OUT/ar-SA/$2.png"; echo "📸 $2"; }
 # التوقيت يطابق جولة التصوير في lib/screens/shell.dart (وقت كافٍ حتى تتحمّل كل الصور)
-shot 80 "1_home"        # الرئيسية
-shot 50 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 90ث)
-shot 50 "3_category"    # صفحة قسم (عند 150ث)
-shot 60 "4_product"     # صفحة منتج (عند 210ث تقريبًا)
-shot 45 "5_account"     # حسابي (عند 270ث تقريبًا)
+shot 120 "1_home"       # الرئيسية
+shot 50 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 130ث)
+shot 50 "3_category"    # صفحة قسم (عند 190ث)
+shot 60 "4_product"     # صفحة منتج (عند 250ث تقريبًا)
+shot 45 "5_account"     # حسابي (عند 310ث تقريبًا)
 xcrun simctl shutdown "$UDID" || true
 
 echo "▶ فحص اللقطات (لو فيها صور فاضية يتوقف البناء وما يوصل لآبل شي)"

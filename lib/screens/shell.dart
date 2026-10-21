@@ -29,19 +29,21 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     if (kScreenshots) {
-      // صور الأقسام تتحمّل من البداية حتى ما تطلع فاضية في اللقطات
-      for (final c in allCategories) {
-        StoreApi.categoryCover(c.id);
-      }
+      // الرئيسية تتحمّل أول بدون زحمة، وبعدها نحمّل صور الأقسام مسبقًا حتى ما تطلع فاضية
+      Future.delayed(const Duration(seconds: 45), () {
+        for (final c in allCategories) {
+          StoreApi.categoryCover(c.id);
+        }
+      });
       _tour();
     }
   }
 
   /// جولة تصوير المتجر (توقيتها يطابق ci/screenshots.sh):
-  /// الرئيسية ← الأقسام (90ث) ← صفحة قسم (150ث) ← صفحة منتج (210ث) ← حسابي (270ث)
+  /// الرئيسية ← الأقسام (130ث) ← صفحة قسم (190ث) ← صفحة منتج (250ث) ← حسابي (310ث)
   Future<void> _tour() async {
     Future<void> wait(int s) => Future.delayed(Duration(seconds: s));
-    await wait(90);
+    await wait(130);
     if (!mounted) return;
     setState(() => _index = 1);
     await wait(60);
