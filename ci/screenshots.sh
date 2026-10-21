@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # يصوّر شاشات App Store تلقائيًا على آيفون افتراضي (6.9 إنش).
-# التطبيق يُبنى بوضع SCREENSHOTS فيتنقّل بين الشاشات بنفسه (lib/screens/shell.dart).
+# التطبيق يُبنى بوضع SCREENSHOTS، والسكربت يقوده من شاشة لشاشة (lib/screens/shell.dart).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -25,13 +25,16 @@ xcrun simctl launch "$UDID" sa.almubarky.bronz
 
 mkdir -p "$OUT/ar-SA"
 rm -f "$OUT/ar-SA/"*.png
-shot() { sleep "$1"; xcrun simctl io "$UDID" screenshot "$OUT/ar-SA/$2.png"; echo "📸 $2"; }
-# التوقيت يطابق جولة التصوير في lib/screens/shell.dart (وقت كافٍ حتى تتحمّل كل الصور)
-shot 120 "1_home"       # الرئيسية
-shot 50 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 130ث)
-shot 50 "3_category"    # صفحة قسم (عند 190ث)
-shot 60 "4_product"     # صفحة منتج (عند 250ث تقريبًا)
-shot 45 "5_account"     # حسابي (عند 310ث تقريبًا)
+DATA=$(xcrun simctl get_app_container "$UDID" sa.almubarky.bronz data)
+mkdir -p "$DATA/tmp"
+shot() { xcrun simctl io "$UDID" screenshot "$OUT/ar-SA/$1.png"; echo "📸 $1"; }
+# السكربت يقود التطبيق: يصوّر ← يطلب الشاشة التالية ← ينتظر تحميلها ← يصوّر
+step() { echo "$1" > "$DATA/tmp/bronz_step"; echo "▶ الخطوة $1"; }
+sleep 90;  shot "1_home"        # الرئيسية
+step 1; sleep 50;  shot "2_categories"  # الأقسام
+step 2; sleep 50;  shot "3_category"    # صفحة قسم
+step 3; sleep 50;  shot "4_product"     # صفحة منتج
+step 4; sleep 20;  shot "5_account"     # حسابي
 xcrun simctl shutdown "$UDID" || true
 
 echo "▶ فحص اللقطات (لو فيها صور فاضية يتوقف البناء وما يوصل لآبل شي)"

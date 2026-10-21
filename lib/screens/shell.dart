@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -39,27 +41,46 @@ class _ShellState extends State<Shell> {
     }
   }
 
-  /// جولة تصوير المتجر (توقيتها يطابق ci/screenshots.sh):
-  /// الرئيسية ← الأقسام (130ث) ← صفحة قسم (190ث) ← صفحة منتج (250ث) ← حسابي (310ث)
+  /// جولة تصوير المتجر — يقودها سكربت التصوير (ci/screenshots.sh) بملف خطوة
+  /// داخل مجلد tmp للتطبيق: 1 الأقسام · 2 صفحة قسم · 3 صفحة منتج · 4 حسابي.
+  /// كذا كل لقطة تنأخذ بعد ما تجهز شاشتها، مهما تأخر المحاكي.
   Future<void> _tour() async {
-    Future<void> wait(int s) => Future.delayed(Duration(seconds: s));
-    await wait(130);
-    if (!mounted) return;
-    setState(() => _index = 1);
-    await wait(60);
+    final file = File('${Directory.systemTemp.path}/bronz_step');
+    var done = 0;
+    while (mounted && done < 4) {
+      await Future.delayed(const Duration(seconds: 1));
+      int step;
+      try {
+        step = int.tryParse((await file.readAsString()).trim()) ?? 0;
+      } catch (_) {
+        continue;
+      }
+      while (done < step && mounted) {
+        done++;
+        await _tourStep(done);
+      }
+    }
+  }
+
+  Future<void> _tourStep(int step) async {
     final nav = navigatorKey.currentState;
     if (nav == null || allCategories.isEmpty) return;
     final c = allCategories.first;
-    nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
-    await wait(60);
-    try {
-      final list = await StoreApi.byCategory(c.id);
-      final p = list.where((x) => x.image.isNotEmpty).toList();
-      if (p.isNotEmpty) nav.push(MaterialPageRoute(builder: (_) => ProductScreen(product: p.first)));
-    } catch (_) {}
-    await wait(55);
-    nav.popUntil((r) => r.isFirst);
-    if (mounted) setState(() => _index = 3);
+    switch (step) {
+      case 1:
+        setState(() => _index = 1);
+      case 2:
+        nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
+      case 3:
+        try {
+          final list = await StoreApi.byCategory(c.id);
+          final p = list.where((x) => x.image.isNotEmpty).toList();
+          if (p.isNotEmpty) nav.push(MaterialPageRoute(builder: (_) => ProductScreen(product: p.first)));
+        } catch (_) {}
+      case 4:
+        nav.popUntil((r) => r.isFirst);
+        setState(() => _index = 3);
+    }
   }
 
   void _go(int i) {
