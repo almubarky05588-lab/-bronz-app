@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../core/catalog.dart';
+import '../core/demo.dart';
 import '../core/product.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
@@ -95,7 +96,8 @@ class _BannerCarouselState extends State<BannerCarousel> {
       _ratio = ratio;
     });
     _timer?.cancel();
-    if (list.length > 1) {
+    // في وضع تصوير المتجر البانر ثابت (حتى تثبت الشاشة وتنأخذ اللقطة)
+    if (list.length > 1 && !kScreenshots) {
       _timer = Timer.periodic(const Duration(seconds: 4), (_) {
         if (!mounted || !_pc.hasClients) return;
         final next = (_index + 1) % list.length;

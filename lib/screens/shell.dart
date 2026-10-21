@@ -31,12 +31,6 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     if (kScreenshots) {
-      // الرئيسية تتحمّل أول بدون زحمة، وبعدها نحمّل صور الأقسام مسبقًا حتى ما تطلع فاضية
-      Future.delayed(const Duration(seconds: 45), () {
-        for (final c in allCategories) {
-          StoreApi.categoryCover(c.id);
-        }
-      });
       _tour();
     }
   }
