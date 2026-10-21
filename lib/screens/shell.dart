@@ -3,12 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
+import '../core/catalog.dart';
 import '../core/demo.dart';
+import '../core/push.dart';
+import '../core/store_api.dart';
 import '../core/theme.dart';
 import 'account_screen.dart';
 import 'cart_screen.dart';
 import 'categories_screen.dart';
+import 'category_screen.dart';
 import 'home_screen.dart';
+import 'product_screen.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -23,15 +28,36 @@ class _ShellState extends State<Shell> {
   @override
   void initState() {
     super.initState();
-    // جولة التصوير: الرئيسية ← الأقسام ← حسابي (توقيتها يطابق ci/screenshots.sh)
     if (kScreenshots) {
-      Future.delayed(const Duration(seconds: 40), () {
-        if (mounted) setState(() => _index = 1);
-      });
-      Future.delayed(const Duration(seconds: 55), () {
-        if (mounted) setState(() => _index = 3);
-      });
+      // صور الأقسام تتحمّل من البداية حتى ما تطلع فاضية في اللقطات
+      for (final c in allCategories) {
+        StoreApi.categoryCover(c.id);
+      }
+      _tour();
     }
+  }
+
+  /// جولة تصوير المتجر (توقيتها يطابق ci/screenshots.sh):
+  /// الرئيسية ← الأقسام (75ث) ← صفحة قسم (110ث) ← صفحة منتج (155ث) ← حسابي (195ث)
+  Future<void> _tour() async {
+    Future<void> wait(int s) => Future.delayed(Duration(seconds: s));
+    await wait(75);
+    if (!mounted) return;
+    setState(() => _index = 1);
+    await wait(35);
+    final nav = navigatorKey.currentState;
+    if (nav == null || allCategories.isEmpty) return;
+    final c = allCategories.first;
+    nav.push(MaterialPageRoute(builder: (_) => CategoryScreen(category: c)));
+    await wait(45);
+    try {
+      final list = await StoreApi.byCategory(c.id);
+      final p = list.where((x) => x.image.isNotEmpty).toList();
+      if (p.isNotEmpty) nav.push(MaterialPageRoute(builder: (_) => ProductScreen(product: p.first)));
+    } catch (_) {}
+    await wait(40);
+    nav.popUntil((r) => r.isFirst);
+    if (mounted) setState(() => _index = 3);
   }
 
   void _go(int i) {
