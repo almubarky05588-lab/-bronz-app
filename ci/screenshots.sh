@@ -24,12 +24,24 @@ xcrun simctl install "$UDID" build/ios/iphonesimulator/Runner.app
 xcrun simctl launch "$UDID" sa.almubarky.bronz
 
 mkdir -p "$OUT/ar-SA"
+rm -f "$OUT/ar-SA/"*.png
 shot() { sleep "$1"; xcrun simctl io "$UDID" screenshot "$OUT/ar-SA/$2.png"; echo "📸 $2"; }
-shot 34 "1_home"       # الرئيسية بعد ما تحمّل المنتجات
-shot 14 "2_categories" # الأقسام (التطبيق ينتقل لها عند الثانية 40)
-shot 15 "3_account"    # حسابي (عند الثانية 55)
-
-# نفس الصور للإنجليزي (لو لغة التطبيق الأساسية في App Store إنجليزية)
-mkdir -p "$OUT/en-US" && cp "$OUT/ar-SA/"*.png "$OUT/en-US/"
+# التوقيت يطابق جولة التصوير في lib/screens/shell.dart (وقت كافٍ حتى تتحمّل كل الصور)
+shot 70 "1_home"        # الرئيسية
+shot 35 "2_categories"  # الأقسام (التطبيق ينتقل لها عند 75ث)
+shot 45 "3_category"    # صفحة قسم (عند 110ث)
+shot 40 "4_product"     # صفحة منتج (عند 155ث)
+shot 25 "5_account"     # حسابي (عند 195ث)
 xcrun simctl shutdown "$UDID" || true
+
+echo "▶ إخراج الصور التسويقية (خلفية سوداء + الشعار + العنوان)"
+(
+  python3 -m venv /tmp/frameenv
+  /tmp/frameenv/bin/pip install -q pillow arabic-reshaper python-bidi
+  curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
+  /tmp/frameenv/bin/python "$ROOT/ci/frame_screenshots.py" "$OUT/ar-SA" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_4096.png"
+) || echo "⚠️ تعذّر الإخراج التسويقي — نكمل باللقطات الخام"
+
+# نفس الصور للإنجليزي
+mkdir -p "$OUT/en-US" && rm -f "$OUT/en-US/"*.png && cp "$OUT/ar-SA/"*.png "$OUT/en-US/"
 ls -la "$OUT/ar-SA"

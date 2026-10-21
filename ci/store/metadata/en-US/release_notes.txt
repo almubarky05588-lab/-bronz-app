@@ -1,5 +1,3 @@
-A brand-new look in Bronz's signature black & white:
-• Cleaner interface with all-new icons
-• Redesigned product page with larger photos
-• Endless scrolling through every product in a category
-• Improvements to offers, notifications and performance
+New App Store screenshots and design improvements:
+• Faster loading for category and product images
+• Minor interface refinements
