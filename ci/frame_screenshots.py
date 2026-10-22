@@ -17,14 +17,15 @@ COPY = {
     '5_account': ('طلباتك تحت عينك', 'تتبّع طلبك وتواصل معنا بسهولة'),
 }
 
-RAQM = features.check('raqm')  # تشكيل الحروف العربية الصحيح (موجود في Pillow الرسمي)
+# تشكيل الحروف العربية الصحيح يحتاج raqm + fribidi — بدونها تطلع مربعات بدل بعض الحروف،
+# فنوقف هنا بخطأ بدل ما نرفع كتابة مكسورة للمتجر.
+RAQM = features.check('raqm')
+if not RAQM:
+    print('❌ مكتبة تشكيل العربية (raqm/fribidi) غير متوفرة — أوقفت الإخراج')
+    sys.exit(1)
 
 def ar(text):
-    if RAQM:
-        return text
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    return get_display(arabic_reshaper.reshape(text))
+    return text
 
 def font(size, weight):
     f = ImageFont.truetype(FONT, size)
@@ -50,9 +51,8 @@ def rounded(img, r):
 
 def centered(draw, y, text, f, fill):
     t = ar(text)
-    kw = {'direction': 'rtl'} if RAQM else {}
-    w = draw.textlength(t, font=f, **kw)
-    draw.text(((W - w) / 2, y), t, font=f, fill=fill, **kw)
+    w = draw.textlength(t, font=f, direction='rtl')
+    draw.text(((W - w) / 2, y), t, font=f, fill=fill, direction='rtl')
 
 title_f, sub_f = font(104, 'Bold'), font(46, 'Regular')
 lg, lg_mask = logo(300)

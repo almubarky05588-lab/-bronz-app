@@ -24,7 +24,7 @@ xcrun simctl install "$UDID" build/ios/iphonesimulator/Runner.app
 xcrun simctl launch "$UDID" sa.almubarky.bronz
 
 python3 -m venv /tmp/frameenv
-/tmp/frameenv/bin/pip install -q pillow arabic-reshaper python-bidi
+/tmp/frameenv/bin/pip install -q pillow
 
 mkdir -p "$OUT/ar-SA"
 rm -f "$OUT/ar-SA/"*.png
@@ -58,10 +58,11 @@ echo "▶ فحص اللقطات (لو فيها صور فاضية يتوقف ال
 /tmp/frameenv/bin/python "$ROOT/ci/check_screenshots.py" "$OUT/ar-SA"
 
 echo "▶ إخراج الصور التسويقية (خلفية سوداء + الشعار + العنوان)"
-(
-  curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
-  /tmp/frameenv/bin/python "$ROOT/ci/frame_screenshots.py" "$OUT/ar-SA" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_4096.png"
-) || echo "⚠️ تعذّر الإخراج التسويقي — نكمل باللقطات الخام"
+# تشكيل الحروف العربية في Pillow يحتاج fribidi على macOS (وإلا تطلع مربعات)
+brew list fribidi >/dev/null 2>&1 || brew install -q fribidi
+curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}"
+/tmp/frameenv/bin/python "$ROOT/ci/frame_screenshots.py" "$OUT/ar-SA" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_4096.png"
 
 # نفس الصور للإنجليزي
 mkdir -p "$OUT/en-US" && rm -f "$OUT/en-US/"*.png && cp "$OUT/ar-SA/"*.png "$OUT/en-US/"
