@@ -299,8 +299,15 @@ async function send(req) {
   const v = str(b.value, 500);
   const data = {};
   if (b.open === 'order' && v) data.order_id = v;
-  if (b.open === 'product' && v) data.product_id = (v.match(/\/p(\d+)/) || [])[1] || v;
-  if (b.open === 'category' && v) data.category_id = (v.match(/\/c(\d+)/) || [])[1] || v;
+  // رابط منتج/قسم بدون رقم (رابط مختصر) يُرسل كرابط والتطبيق يحوّله بنفسه
+  if (b.open === 'product' && v) {
+    const id = (v.match(/\/p(\d+)/) || [])[1];
+    if (id) data.product_id = id; else if (/^https?:/.test(v)) data.url = v; else data.product_id = v;
+  }
+  if (b.open === 'category' && v) {
+    const id = (v.match(/\/c(\d+)/) || [])[1];
+    if (id) data.category_id = id; else if (/^https?:/.test(v)) data.url = v; else data.category_id = v;
+  }
   if (b.open === 'url' && v) data.url = v;
   if (b.open === 'offers') data.offers = '1';
   if (Object.keys(data).length) msg.data = data;
