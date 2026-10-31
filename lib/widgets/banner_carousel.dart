@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -11,8 +13,37 @@ import '../core/theme.dart';
 import '../screens/category_screen.dart';
 import '../screens/product_screen.dart';
 
+bool _hasStoreId(String link) => RegExp(r'/[pc]\d+(?:$|[/?#])|/category/').hasMatch(link);
+
+/// يحوّل رابط سلة المختصر (مثل bronz-sa.com/ar/gZoZmEO) إلى الرابط الكامل اللي فيه رقم المنتج.
+/// يُنفّذ من جوال العميل (سلة تمنع السيرفرات لكن ما تمنع الجوالات).
+Future<String?> resolveStoreLink(String link) async {
+  final uri = Uri.tryParse(link);
+  if (uri == null || !uri.host.endsWith('bronz-sa.com')) return null;
+  final client = HttpClient()..userAgent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) BronzApp';
+  try {
+    final req = await client.getUrl(uri);
+    final res = await req.close().timeout(const Duration(seconds: 12));
+    var finalUrl = res.redirects.isNotEmpty ? res.redirects.last.location.toString() : link;
+    if (!finalUrl.startsWith('http')) finalUrl = uri.resolve(finalUrl).toString();
+    if (_hasStoreId(finalUrl)) return finalUrl;
+    final body = await res.transform(utf8.decoder).join();
+    final m = RegExp(r'<link[^>]+rel="canonical"[^>]*href="([^"]+)"').firstMatch(body) ??
+        RegExp(r'property="og:url"[^>]*content="([^"]+)"').firstMatch(body);
+    if (m != null) {
+      final u = uri.resolve(m.group(1)!.replaceAll('&amp;', '&')).toString();
+      if (_hasStoreId(u)) return u;
+    }
+  } catch (_) {
+  } finally {
+    client.close();
+  }
+  return null;
+}
+
 /// يفتح رابطًا من روابط المتجر داخل التطبيق (منتج / قسم / العروض).
-void openStoreLink(BuildContext context, String? link) {
+/// الروابط المختصرة تُحوّل أولًا إلى الرابط الكامل.
+Future<void> openStoreLink(BuildContext context, String? link, {bool resolved = false}) async {
   if (link == null || link.isEmpty) return;
   final nav = Navigator.of(context);
   final product = RegExp(r'/p(\d+)(?:$|[/?#])').firstMatch(link);
@@ -34,6 +65,13 @@ void openStoreLink(BuildContext context, String? link) {
     nav.push(MaterialPageRoute(
       builder: (_) => ProductListScreen(title: 'العروض', loader: (p) => StoreApi.offers(page: p)),
     ));
+    return;
+  }
+  if (!resolved) {
+    final full = await resolveStoreLink(link);
+    if (full != null && full != link && context.mounted) {
+      await openStoreLink(context, full, resolved: true);
+    }
   }
 }
 
