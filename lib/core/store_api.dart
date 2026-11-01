@@ -247,8 +247,7 @@ class StoreApi {
 
   static Future<void> logout() async {
     Push.forget();
-    await _b.call('logout');
-    await _b.refreshSession();
+    await _b.clearSession();
   }
 
   // ───────── الدفع ─────────
