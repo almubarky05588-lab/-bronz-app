@@ -79,6 +79,24 @@ class StoreBridge {
     await waitReady();
   }
 
+  /// تسجيل خروج كامل: خروج من سلة + مسح الكوكيز والتخزين (وإلا تبقى الجلسة محفوظة)
+  /// ثم إعادة تحميل الصفحة المخفية كضيف.
+  Future<void> clearSession() async {
+    try {
+      await call('logout');
+    } catch (_) {}
+    try {
+      await WebViewCookieManager().clearCookies();
+    } catch (_) {}
+    try {
+      await controller.clearLocalStorage();
+    } catch (_) {}
+    try {
+      await controller.clearCache();
+    } catch (_) {}
+    await refreshSession();
+  }
+
   void _onMessage(JavaScriptMessage m) {
     Map<String, dynamic> map;
     try {
