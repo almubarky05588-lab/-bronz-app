@@ -39,13 +39,16 @@ class StoreBridge {
           if (e.isForMainFrame ?? true) _failed = true;
         },
         // الصفحة المخفية لا تغادر المتجر أبدًا (تمنع أي تحويل تلقائي بعد الدخول)
+        // — الإطارات الداخلية (التحقق الأمني وغيره) تتحمّل بحرية
         onNavigationRequest: (req) {
+          if (!req.isMainFrame) return NavigationDecision.navigate;
           final host = Uri.tryParse(req.url)?.host ?? '';
           return host.endsWith('bronz-sa.com')
               ? NavigationDecision.navigate
               : NavigationDecision.prevent;
         },
       ))
+      ..setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1')
       ..loadRequest(Uri.parse(storeUrl));
   }
 
