@@ -39,12 +39,12 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _logout() async {
+    // الواجهة تتحوّل لزائر فورًا، ومسح الجلسة يكمل في الخلفية (ما ينتظر المتجر)
+    setState(() => _who = Future.value(null));
+    showBronzToast(context, 'تم تسجيل الخروج', icon: PhosphorIcons.signOut());
     try {
       await StoreApi.logout();
     } catch (_) {}
-    if (!mounted) return;
-    showBronzToast(context, 'تم تسجيل الخروج', icon: PhosphorIcons.signOut());
-    _refresh();
   }
 
   /// حذف الحساب: تأكيد ← طلب حذف رسمي لخدمة العملاء ← تسجيل خروج من الجهاز.
