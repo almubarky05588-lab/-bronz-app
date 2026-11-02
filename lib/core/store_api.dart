@@ -211,10 +211,19 @@ class StoreApi {
     return null;
   }
 
-  /// يرسل رمز التحقق للجوال.
-  static Future<void> sendCode(String phone) => _b.call('login', {'phone': phone});
+  /// يرسل رمز التحقق للجوال ويرجع رسالة سلة (قناة الإرسال/التنبيه) لعرضها للعميل.
+  static Future<String> sendCode(String phone) async => _msg(await _b.call('login', {'phone': phone}));
 
-  static Future<void> resendCode(String phone) => _b.call('resend', {'phone': phone});
+  static Future<String> resendCode(String phone) async => _msg(await _b.call('resend', {'phone': phone}));
+
+  static String _msg(dynamic res) {
+    if (res is! Map) return '';
+    final d = res['data'];
+    for (final v in [res['message'], if (d is Map) d['message'], if (d is Map) d['msg']]) {
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+    return '';
+  }
 
   static Future<VerifyResult> verifyCode(String phone, String code) async {
     final res = await _b.call('verify', {'phone': phone, 'code': code});
