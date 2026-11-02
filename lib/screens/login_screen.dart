@@ -44,13 +44,17 @@ class _LoginScreenState extends State<LoginScreen> {
           _web.runJavaScript(_openLoginJs);
           if (mounted) setState(() => _loading = false);
         },
-        // نبقى داخل المتجر وصفحات سلة فقط
+        // الصفحة الرئيسية تبقى داخل المتجر وسلة فقط — أما الإطارات الداخلية (التحقق الأمني/الكابتشا)
+        // فلازم تتحمّل بحرية، وإلا تفشل سلة في إرسال الرمز
         onNavigationRequest: (req) {
+          if (!req.isMainFrame) return NavigationDecision.navigate;
           final host = Uri.tryParse(req.url)?.host ?? '';
           final ok = host.endsWith('bronz-sa.com') || host.endsWith('salla.com') || host.endsWith('salla.sa');
           return ok ? NavigationDecision.navigate : NavigationDecision.prevent;
         },
       ))
+      // هوية سفاري حتى يتعامل التحقق الأمني مع التطبيق كمتصفح عادي
+      ..setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1')
       ..loadRequest(Uri.parse(storeUrl));
     _poll = Timer.periodic(const Duration(milliseconds: 1500), (_) => _check());
   }
