@@ -1,3 +1,5 @@
-Notification improvements:
+Account and notification improvements:
+• Faster, more reliable sign-in with verification code
 • Product links in notifications and offers now open the product page directly
-• Performance improvements
+• Instant sign-out
+• Performance and stability improvements
