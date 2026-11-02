@@ -230,16 +230,16 @@ class StoreBridge {
 
     login: async function(a){
       noRedirect();
-      return await salla.api.auth.login({ type: 'mobile', phone: a.phone, country_code: 'SA' });
+      return await salla.api.auth.login({ type: 'mobile', phone: a.phone, country_code: 'SA', country_key: '+966' });
     },
 
     resend: async function(a){
-      return await salla.api.auth.resend({ type: 'mobile', phone: a.phone, country_code: 'SA' });
+      return await salla.api.auth.resend({ type: 'mobile', phone: a.phone, country_code: 'SA', country_key: '+966' });
     },
 
     verify: async function(a){
       noRedirect();
-      return await salla.api.auth.verify({ type: 'mobile', phone: a.phone, code: a.code, country_code: 'SA' }, false);
+      return await salla.api.auth.verify({ type: 'mobile', phone: a.phone, code: a.code, country_code: 'SA', country_key: '+966' }, false);
     },
 
     register: async function(a){
