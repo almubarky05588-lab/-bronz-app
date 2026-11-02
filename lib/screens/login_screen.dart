@@ -57,6 +57,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  /// رسالة سلة بعد إرسال الرمز (مثل: تم الإرسال عبر رسالة نصية) — تساعد لو ما وصل الرمز.
+  String _serverMsg = '';
+
   Future<void> _run(Future<void> Function() job) async {
     FocusScope.of(context).unfocus();
     setState(() {
@@ -76,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!StoreApi.isValidPhone(p)) {
           throw 'اكتب رقم جوال سعودي صحيح يبدأ بـ 5';
         }
-        await StoreApi.sendCode(p);
+        _serverMsg = await StoreApi.sendCode(p);
         _phone = p;
         _codeCtrl.clear();
         setState(() => _step = _Step.code);
@@ -84,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
   Future<void> _resend() => _run(() async {
-        await StoreApi.resendCode(_phone);
+        _serverMsg = await StoreApi.resendCode(_phone);
         _startCountdown();
       });
 
@@ -251,6 +254,11 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _title(t, 'رمز التحقق', 'أرسلنا رمزًا إلى الرقم +966 $_phone'),
+          if (_serverMsg.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_serverMsg, style: const TextStyle(color: BronzColors.muted, fontSize: 12.5)),
+            ),
           Directionality(
             textDirection: TextDirection.ltr,
             child: TextField(
