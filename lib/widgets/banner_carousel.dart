@@ -34,6 +34,13 @@ Future<String?> resolveStoreLink(String link) async {
       final u = uri.resolve(m.group(1)!.replaceAll('&amp;', '&')).toString();
       if (_hasStoreId(u)) return u;
     }
+    // روابط سلة الحديثة ما فيها رقم المنتج — نقرأه من صفحة المنتج نفسها
+    final id = RegExp(r'<salla-add-product-button[^>]*product-id="(\d+)"').firstMatch(body)?.group(1) ??
+        RegExp(r'<salla-product-availability[^>]*product-id="(\d+)"').firstMatch(body)?.group(1) ??
+        RegExp(r'<salla-quantity-input[^>]*product-id="(\d+)"').firstMatch(body)?.group(1) ??
+        RegExp(r'"product_id"\s*:\s*"?(\d{6,})').firstMatch(body)?.group(1) ??
+        RegExp(r'name="product_id"[^>]*value="(\d+)"').firstMatch(body)?.group(1);
+    if (id != null) return 'https://bronz-sa.com/ar/p$id';
   } catch (_) {
   } finally {
     client.close();
