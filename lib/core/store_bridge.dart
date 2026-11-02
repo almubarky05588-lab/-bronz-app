@@ -83,7 +83,7 @@ class StoreBridge {
   /// ثم إعادة تحميل الصفحة المخفية كضيف.
   Future<void> clearSession() async {
     try {
-      await call('logout');
+      await call('logout', const {}, 6);
     } catch (_) {}
     try {
       await WebViewCookieManager().clearCookies();
@@ -94,7 +94,7 @@ class StoreBridge {
     try {
       await controller.clearCache();
     } catch (_) {}
-    await refreshSession();
+    reload(); // تحميل الصفحة المخفية من جديد كضيف — بدون انتظار
   }
 
   void _onMessage(JavaScriptMessage m) {
