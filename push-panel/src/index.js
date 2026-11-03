@@ -139,7 +139,17 @@ function cleanBlock(b) {
   switch (b.type) {
     case 'banners':
     case 'features':
+    case 'installments':
       return { type: b.type, hidden };
+    case 'hero':
+      return {
+        type: 'hero', hidden,
+        slides: (Array.isArray(b.slides) ? b.slides : []).slice(0, 8).map((sl) => ({
+          title: str(sl.title, 40), sub: str(sl.sub, 60), big: str(sl.big, 12),
+          image: str(sl.image, 600), bg: /^#[0-9a-fA-F]{6}$/.test(str(sl.bg, 7)) ? str(sl.bg, 7) : '',
+          link: cleanLink(sl.link),
+        })),
+      };
     case 'circles':
       return {
         type: 'circles', hidden,
@@ -209,6 +219,13 @@ async function resolveLinks(c) {
     jobs.push(resolveLink(c.popup.value).then((v) => { c.popup.value = v; }));
   }
   for (const b of c.blocks) {
+    if (b.type === 'hero') {
+      for (const sl of b.slides) {
+        if (['product', 'url'].includes(sl.link.to) && sl.link.value) {
+          jobs.push(resolveLink(sl.link.value).then((v) => { sl.link.value = v; }));
+        }
+      }
+    }
     if (b.type !== 'circles') continue;
     for (const it of b.items) {
       if (['product', 'url'].includes(it.link.to) && it.link.value) {
