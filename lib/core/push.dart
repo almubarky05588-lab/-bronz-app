@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../screens/category_screen.dart';
 import '../screens/orders_screen.dart';
@@ -145,6 +146,14 @@ class Push {
       return;
     }
     final url = d['url'];
-    if (url is String && url.isNotEmpty) openStoreLink(nav.context, url);
+    if (url is String && url.isNotEmpty) {
+      final host = Uri.tryParse(url)?.host ?? '';
+      if (host.endsWith('bronz-sa.com')) {
+        openStoreLink(nav.context, url);
+      } else {
+        // رابط خارجي (مثل صفحة التطبيق في App Store) يُفتح خارج التطبيق
+        launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
+    }
   }
 }
