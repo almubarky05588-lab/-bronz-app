@@ -1,5 +1,5 @@
-Account and notification improvements:
-• Faster, more reliable sign-in with verification code
-• Product links in notifications and offers now open the product page directly
-• Instant sign-out
-• Performance and stability improvements
+A fresh new home screen:
+• Full-width banners and faster search
+• Categories with product photos
+• New tab for the best offers
+• Performance improvements
