@@ -73,7 +73,7 @@ class _ShellState extends State<Shell> {
         } catch (_) {}
       case 4:
         nav.popUntil((r) => r.isFirst);
-        setState(() => _index = 3);
+        setState(() => _index = 4);
     }
   }
 
@@ -86,59 +86,89 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: const [HomeScreen(), CategoriesScreen(), CartScreen(), AccountScreen()],
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: BronzColors.bg,
-          border: Border(top: BorderSide(color: BronzColors.line)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 64,
-            child: ListenableBuilder(
-              listenable: Cart.instance,
-              builder: (context, _) => Row(
-                children: [
-                  _NavItem(
-                    label: 'الرئيسية',
-                    icon: PhosphorIcons.house(),
-                    activeIcon: PhosphorIcons.house(PhosphorIconsStyle.fill),
-                    selected: _index == 0,
-                    onTap: () => _go(0),
-                  ),
-                  _NavItem(
-                    label: 'الأقسام',
-                    icon: PhosphorIcons.squaresFour(),
-                    activeIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
-                    selected: _index == 1,
-                    onTap: () => _go(1),
-                  ),
-                  _NavItem(
-                    label: 'السلة',
-                    icon: PhosphorIcons.handbag(),
-                    activeIcon: PhosphorIcons.handbag(PhosphorIconsStyle.fill),
-                    selected: _index == 2,
-                    badge: Cart.instance.count,
-                    onTap: () => _go(2),
-                  ),
-                  _NavItem(
-                    label: 'حسابي',
-                    icon: PhosphorIcons.user(),
-                    activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
-                    selected: _index == 3,
-                    onTap: () => _go(3),
-                  ),
-                ],
-              ),
+      extendBody: true, // المحتوى يمرّ تحت الشريط العائم
+      body: Builder(builder: (context) {
+        // الشريط عائم فوق المحتوى: الرئيسية تمرّ تحته، وبقية التبويبات تنتهي فوقه
+        final pad = EdgeInsets.only(bottom: 78 + MediaQuery.paddingOf(context).bottom);
+        return IndexedStack(
+          index: _index,
+          children: [
+            const HomeScreen(),
+            Padding(padding: pad, child: const CategoriesScreen()),
+            Padding(padding: pad, child: const _OffersTab()),
+            Padding(padding: pad, child: const CartScreen()),
+            Padding(padding: pad, child: const AccountScreen()),
+          ],
+        );
+      }),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+        child: Container(
+          height: 68,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(34),
+            border: Border.all(color: BronzColors.line),
+            boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 24, offset: Offset(0, 8))],
+          ),
+          child: ListenableBuilder(
+            listenable: Cart.instance,
+            builder: (context, _) => Row(
+              children: [
+                _NavItem(
+                  label: 'الرئيسية',
+                  icon: PhosphorIcons.house(),
+                  activeIcon: PhosphorIcons.house(PhosphorIconsStyle.fill),
+                  selected: _index == 0,
+                  onTap: () => _go(0),
+                ),
+                _NavItem(
+                  label: 'الأقسام',
+                  icon: PhosphorIcons.squaresFour(),
+                  activeIcon: PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
+                  selected: _index == 1,
+                  onTap: () => _go(1),
+                ),
+                _NavItem(
+                  label: 'أقوى العروض',
+                  icon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
+                  activeIcon: PhosphorIcons.percent(PhosphorIconsStyle.bold),
+                  selected: _index == 2,
+                  accent: true,
+                  onTap: () => _go(2),
+                ),
+                _NavItem(
+                  label: 'سلة التسوق',
+                  icon: PhosphorIcons.handbag(),
+                  activeIcon: PhosphorIcons.handbag(PhosphorIconsStyle.fill),
+                  selected: _index == 3,
+                  badge: Cart.instance.count,
+                  onTap: () => _go(3),
+                ),
+                _NavItem(
+                  label: 'حسابي',
+                  icon: PhosphorIcons.user(),
+                  activeIcon: PhosphorIcons.user(PhosphorIconsStyle.fill),
+                  selected: _index == 4,
+                  onTap: () => _go(4),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// تبويب العروض — نفس قائمة المنتجات بدون زر رجوع.
+class _OffersTab extends StatelessWidget {
+  const _OffersTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return ProductListScreen(title: 'أقوى العروض 🔥', loader: (p) => StoreApi.offers(page: p));
   }
 }
 
@@ -148,6 +178,7 @@ class _NavItem extends StatelessWidget {
   final IconData activeIcon;
   final bool selected;
   final int badge;
+  final bool accent; // أيقونة ملوّنة دائمًا (العروض)
   final VoidCallback onTap;
   const _NavItem({
     required this.label,
@@ -156,11 +187,13 @@ class _NavItem extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.badge = 0,
+    this.accent = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = selected ? BronzColors.ink : BronzColors.faint;
+    final iconColor = accent ? const Color(0xFF2F7CF6) : color;
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -175,7 +208,7 @@ class _NavItem extends StatelessWidget {
               label: Text('$badge', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
-                child: Icon(selected ? activeIcon : icon, key: ValueKey(selected), size: 24, color: color),
+                child: Icon(selected ? activeIcon : icon, key: ValueKey(selected), size: 24, color: iconColor),
               ),
             ),
             const SizedBox(height: 3),

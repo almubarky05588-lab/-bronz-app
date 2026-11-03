@@ -60,11 +60,40 @@ class IconItem {
       );
 }
 
-/// قطعة في الرئيسية: banners | features | circles | products
+/// شريحة في «البانر الذكي»: نص كبير + سطر + رقم ضخم + صورة منتج + لون خلفية.
+class HeroSlide {
+  final String title;
+  final String sub;
+  final String big;
+  final String image;
+  final String bg; // hex مثل #EEF1F4
+  final LinkTarget link;
+  const HeroSlide({
+    this.title = '',
+    this.sub = '',
+    this.big = '',
+    this.image = '',
+    this.bg = '',
+    this.link = const LinkTarget('none'),
+  });
+
+  factory HeroSlide.fromJson(Map m) => HeroSlide(
+        title: '${m['title'] ?? ''}'.trim(),
+        sub: '${m['sub'] ?? ''}'.trim(),
+        big: '${m['big'] ?? ''}'.trim(),
+        image: '${m['image'] ?? ''}'.trim(),
+        bg: '${m['bg'] ?? ''}'.trim(),
+        link: LinkTarget.fromJson(m['link']),
+      );
+}
+
+/// قطعة في الرئيسية: hero | banners | features | circles | products
 class HomeBlock {
   final String type;
   final bool hidden;
   final String title;
+  // البانر الذكي
+  final List<HeroSlide> slides;
   // أيقونات
   final int rows; // 1 صف · 2 صفين · 3 شبكة كاملة
   final List<IconItem> items;
@@ -78,6 +107,7 @@ class HomeBlock {
     required this.type,
     this.hidden = false,
     this.title = '',
+    this.slides = const [],
     this.rows = 1,
     this.items = const [],
     this.source = 'latest',
@@ -90,6 +120,10 @@ class HomeBlock {
         type: '${m['type'] ?? ''}',
         hidden: m['hidden'] == true,
         title: '${m['title'] ?? ''}'.trim(),
+        slides: (m['slides'] is List ? m['slides'] as List : const [])
+            .whereType<Map>()
+            .map(HeroSlide.fromJson)
+            .toList(),
         rows: (int.tryParse('${m['rows'] ?? ''}') ?? 1).clamp(1, 3),
         items: (m['items'] is List ? m['items'] as List : const [])
             .whereType<Map>()
@@ -148,7 +182,7 @@ class AppConfig {
         blocks: (m['blocks'] is List ? m['blocks'] as List : const [])
             .whereType<Map>()
             .map(HomeBlock.fromJson)
-            .where((b) => const {'banners', 'features', 'circles', 'products'}.contains(b.type))
+            .where((b) => const {'hero', 'banners', 'features', 'circles', 'products', 'installments'}.contains(b.type))
             .toList(),
         popup: m['popup'] is Map ? PopupConfig.fromJson(m['popup'] as Map) : null,
       );
