@@ -1,5 +1,4 @@
-A fresh new home screen:
-• Full-width banners and faster search
-• Categories with product photos
-• New tab for the best offers
-• Performance improvements
+New in this release:
+• Send as a gift: premium wrapping, flowers and chocolate, with your personal message
+• New navigation bar with a Best Offers tab
+• Performance and stability improvements
