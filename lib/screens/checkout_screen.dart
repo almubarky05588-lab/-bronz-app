@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -129,7 +131,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _finish();
       return NavigationDecision.prevent;
     }
-    // أي محاولة للذهاب لصفحة عادية في الموقع (الرئيسية/السلة/منتج) → نرجع للتطبيق
+    // أي محاولة للذهاب لصفحة عادية في الموقع (الرئيسية/السلة/منتج) ← نرجع للتطبيق
     if (_phase == _Phase.paying && !_isCheckoutPage(u)) {
       if (mounted) Navigator.of(context).pop();
       return NavigationDecision.prevent;
@@ -148,6 +150,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!_isCheckoutPage(url)) return; // الغطاء يبقى
     if (_isStore(url)) {
       await _c.runJavaScript(_cleanJs);
+      // بيانات الهدية (المستلم ورسالته) تُكتب في ملاحظات الطلب تلقائيًا
+      if (Cart.instance.giftNote.isNotEmpty) await _c.runJavaScript(_noteJs(Cart.instance.giftNote));
       await Future.delayed(const Duration(milliseconds: 200));
     }
     if (!mounted) return;
@@ -258,6 +262,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ],
         ),
       );
+
+  /// يعبّي حقل «ملاحظات الطلب» في صفحة الدفع ببيانات الهدية (يحاول لين يظهر الحقل).
+  static String _noteJs(String note) => '''
+(function(){
+  var note = ${jsonEncode(note)};
+  function fill(){
+    var els = Array.prototype.slice.call(document.querySelectorAll('textarea, input[type=text]'));
+    var t = null;
+    for (var i = 0; i < els.length; i++) {
+      var s = (els[i].name || '') + ' ' + (els[i].id || '') + ' ' + (els[i].placeholder || '');
+      if (/note|ملاحظ/i.test(s)) { t = els[i]; break; }
+    }
+    if (!t) return false;
+    if (t.value && t.value.indexOf('🎁') === 0) return true;
+    t.value = note;
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+    t.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+  var n = 0;
+  (function tick(){ if (fill() || ++n > 40) return; setTimeout(tick, 500); })();
+})();
+''';
 
   /// تنظيف صفحة الدفع من أي أثر للموقع وإلباسها شكل التطبيق.
   static const _cleanJs = r'''
