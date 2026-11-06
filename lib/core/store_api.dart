@@ -67,7 +67,7 @@ class StoreApi {
     return extractList(res)
         .whereType<Map>()
         .map((e) => Product.fromJson(Map<String, dynamic>.from(e)))
-        .where((p) => p.id != 0)
+        .where((p) => p.id != 0 && !giftProductIds.contains(p.id)) // خدمات التغليف تظهر في شاشة الهدية فقط
         .toList();
   }
 
