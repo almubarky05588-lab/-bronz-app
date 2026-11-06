@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../core/util.dart';
 import '../widgets/common.dart';
 import 'checkout_screen.dart';
+import 'gift_sheet.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -23,10 +24,12 @@ class CartScreen extends StatelessWidget {
           }
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            itemCount: cart.items.length,
+            itemCount: cart.items.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
+              if (i == cart.items.length) return const _GiftCard();
               final it = cart.items[i];
+              final isGift = giftProductIds.contains(it.id);
               return Dismissible(
                 key: ValueKey(it.id),
                 direction: DismissDirection.endToStart,
@@ -77,11 +80,14 @@ class CartScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      QtyStepper(
-                        value: it.qty,
-                        min: 0,
-                        onChanged: (v) => cart.setQty(it.id, v),
-                      ),
+                      if (isGift)
+                        RoundIcon(icon: PhosphorIcons.pencilSimple(), onTap: () => GiftSheet.show(context))
+                      else
+                        QtyStepper(
+                          value: it.qty,
+                          min: 0,
+                          onChanged: (v) => cart.setQty(it.id, v),
+                        ),
                     ],
                   ),
                 ),
@@ -141,6 +147,52 @@ class CartScreen extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// بطاقة «أرسله كهدية» أسفل المنتجات.
+class _GiftCard extends StatelessWidget {
+  const _GiftCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = Cart.instance;
+    final has = cart.hasGift;
+    return GestureDetector(
+      onTap: () => GiftSheet.show(context),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF111111), Color(0xFF3A2E22)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          children: [
+            const Text('🎁', style: TextStyle(fontSize: 28)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(has ? 'الطلب بيوصل كهدية' : 'أرسله كهدية',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(
+                    has ? 'اضغط لتعديل بيانات المستلم أو الباقة' : 'تغليف فاخر، ورد وشوكولاتة، ورسالة باسمك',
+                    style: const TextStyle(color: BronzColors.goldSoft, fontSize: 12.5),
+                  ),
+                ],
+              ),
+            ),
+            Icon(PhosphorIcons.caretLeft(), color: Colors.white70, size: 18),
+          ],
+        ),
       ),
     );
   }
