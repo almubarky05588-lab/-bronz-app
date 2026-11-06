@@ -81,7 +81,7 @@ class CartScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       if (isGift)
-                        RoundIcon(icon: PhosphorIcons.pencilSimple(), onTap: () => GiftSheet.show(context))
+                        RoundIcon(icon: Icons.edit_outlined, onTap: () => GiftSheet.show(context))
                       else
                         QtyStepper(
                           value: it.qty,
