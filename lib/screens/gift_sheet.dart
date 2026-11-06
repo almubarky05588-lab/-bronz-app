@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
 import '../core/store_api.dart';
@@ -140,7 +139,7 @@ class _GiftSheetState extends State<GiftSheet> {
                 decoration: BoxDecoration(color: BronzColors.tile, borderRadius: BorderRadius.circular(16)),
                 child: Row(
                   children: [
-                    Icon(PhosphorIcons.mapPin(), size: 20, color: BronzColors.ink),
+                    Icon(Icons.location_on_outlined, size: 20, color: BronzColors.ink),
                     const SizedBox(width: 10),
                     const Expanded(child: Text('التوصيل داخل الرياض؟', style: TextStyle(fontWeight: FontWeight.w700))),
                     Switch.adaptive(
@@ -158,7 +157,7 @@ class _GiftSheetState extends State<GiftSheet> {
                 title: _packs[giftWrapId]!.name,
                 sub: 'علبة فاخرة وشريط برونز',
                 price: _packs[giftWrapId]!.price,
-                icon: PhosphorIcons.gift(),
+                icon: Icons.card_giftcard_rounded,
                 selected: _choice == giftWrapId,
                 onTap: () => setState(() => _choice = giftWrapId),
               ),
@@ -168,7 +167,7 @@ class _GiftSheetState extends State<GiftSheet> {
                   title: _packs[giftFlowersId]!.name,
                   sub: 'تغليف فاخر + باقة ورد + شوكولاتة',
                   price: _packs[giftFlowersId]!.price,
-                  icon: PhosphorIcons.flower(),
+                  icon: Icons.local_florist_rounded,
                   selected: _choice == giftFlowersId,
                   onTap: () => setState(() => _choice = giftFlowersId),
                 )
