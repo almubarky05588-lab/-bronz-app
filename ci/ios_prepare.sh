@@ -44,6 +44,12 @@ cat > "$ROOT/ios/Runner/Runner.entitlements" <<'EOF'
 </plist>
 EOF
 
+echo "▶ أيقونة الجمعة البيضاء (شريط أصفر على الأيقونة)"
+/tmp/iconenv/bin/pip install -q pillow
+curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
+/tmp/iconenv/bin/python "$ROOT/ci/make_bf_icon.py" "$ROOT/assets/branding/BRONZ_app_icon_4096.png" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_bf_4096.png"
+sed -i '' 's#image_path: "assets/branding/BRONZ_app_icon_4096.png"#image_path: "assets/branding/BRONZ_app_icon_bf_4096.png"#' pubspec.yaml
+
 echo "▶ المكتبات والأيقونة والشاشة الافتتاحية"
 flutter pub get
 dart run flutter_launcher_icons
