@@ -9,6 +9,8 @@ class Product {
   final String description;
   final String url;
   final bool available;
+  /// نهاية العرض (إن وُجد) — لعدّاد «ينتهي بعد»
+  final DateTime? saleEnd;
 
   const Product({
     required this.id,
@@ -21,6 +23,7 @@ class Product {
     required this.description,
     required this.url,
     required this.available,
+    this.saleEnd,
   });
 
   /// منتج مبدئي برقمه فقط (تكمل صفحة المنتج تفاصيله من المتجر)
@@ -41,6 +44,22 @@ class Product {
     if (o == null || o <= 0 || o <= price) return null;
     final p = (((o - price) / o) * 100).round();
     return p > 0 ? p : null;
+  }
+
+  /// نهاية العرض من حقول سلة المختلفة (sale_end / promotion.end …)
+  static DateTime? _saleEnd(Map<String, dynamic> j) {
+    final cands = <dynamic>[
+      j['sale_end'], j['sale_end_date'], j['discount_ends'], j['offer_end'],
+      if (j['promotion'] is Map) (j['promotion'] as Map)['end_date'],
+      if (j['promotion'] is Map) (j['promotion'] as Map)['end'],
+    ];
+    for (final c in cands) {
+      if (c == null) continue;
+      final raw = c is Map ? '${c['date'] ?? ''}' : '$c';
+      final d = DateTime.tryParse(raw.trim().replaceFirst(' ', 'T'));
+      if (d != null) return d;
+    }
+    return null;
   }
 
   static double? _num(dynamic v) {
@@ -97,6 +116,7 @@ class Product {
       description: '${j['description'] ?? ''}',
       url: '${j['url'] ?? ''}',
       available: avail is bool ? avail : (status.isEmpty || status == 'sale'),
+      saleEnd: _saleEnd(j),
     );
   }
 
@@ -110,6 +130,7 @@ class Product {
         'images': images,
         'url': url,
         'is_available': available,
+        if (saleEnd != null) 'sale_end': saleEnd!.toIso8601String(),
       };
 
   Product mergedWith(Product fallback) => Product(
@@ -123,5 +144,6 @@ class Product {
         description: description.isNotEmpty ? description : fallback.description,
         url: url.isNotEmpty ? url : fallback.url,
         available: available,
+        saleEnd: saleEnd ?? fallback.saleEnd,
       );
 }
