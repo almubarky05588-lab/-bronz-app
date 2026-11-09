@@ -70,10 +70,8 @@ for yy in range(H):
     gd.line([(0, yy), (W, yy)], fill=c)
 bg.paste(grad, (0, 0), tl)
 
-# خط ذهبي رفيع + سطر صغير
-ly = ty + 230
-d.line([(W / 2 - 150, ly), (W / 2 + 150, ly)], fill=(214, 176, 82), width=3)
-centered(ly + 34, 'عروض لفترة محدودة', font(54, 'SemiBold'), (225, 222, 214))
+# سطر صغير تحت العنوان (بدون خط فاصل — كان يتقاطع مع حروف «البيضاء»)
+centered(ty + 270, 'عروض لفترة محدودة', font(54, 'SemiBold'), (225, 222, 214))
 
 # ─── شريط التحذير الأصفر
 def tape(text, angle, cy):
