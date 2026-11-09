@@ -88,14 +88,18 @@ class HomeScreen extends StatelessWidget {
       image: it.image,
       categoryId: to == 'category' ? it.link.categoryId : null,
       icon: switch (to) {
-        'offers' => PhosphorIcons.percent(PhosphorIconsStyle.bold),
-        'latest' => PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
         'best' => PhosphorIcons.sealCheck(PhosphorIconsStyle.fill),
         'rated' => PhosphorIcons.heart(PhosphorIconsStyle.fill),
         'product' => PhosphorIcons.handbag(PhosphorIconsStyle.fill),
         _ => PhosphorIcons.squaresFour(PhosphorIconsStyle.fill),
       },
-      dark: to == 'offers',
+      // العروض: % أسود عريض على أبيض · وصل حديثًا: نص بدل الأيقونة
+      text: switch (to) {
+        'offers' => '%',
+        'latest' => 'وصل\nحديثًا',
+        _ => null,
+      },
+      white: to == 'offers',
       onTap: () {
         final d = it.link.data(title: label);
         if (d != null) Push.open(d);
@@ -325,16 +329,18 @@ class _Circle extends StatelessWidget {
   final String label;
   final int? categoryId;
   final IconData? icon;
+  final String? text;
   final String image;
-  final bool dark;
+  final bool white;
   final VoidCallback onTap;
   const _Circle({
     required this.label,
     required this.onTap,
     this.categoryId,
     this.icon,
+    this.text,
     this.image = '',
-    this.dark = false,
+    this.white = false,
   });
 
   @override
@@ -349,15 +355,33 @@ class _Circle extends StatelessWidget {
               width: 74,
               height: 74,
               decoration: BoxDecoration(
-                color: dark ? BronzColors.ink : BronzColors.tile,
+                color: white ? Colors.white : BronzColors.tile,
                 borderRadius: BorderRadius.circular(22),
+                border: white ? Border.all(color: BronzColors.line, width: 1.2) : null,
               ),
               clipBehavior: Clip.antiAlias,
               child: image.isNotEmpty
                   ? NetImage(image, padding: 10, background: BronzColors.tile)
                   : categoryId != null
                       ? CategoryCover(categoryId: categoryId!, padding: 10)
-                      : Center(child: Icon(icon, size: 26, color: dark ? Colors.white : BronzColors.ink)),
+                      : text != null
+                          ? Center(
+                              child: Text(
+                                text!,
+                                textAlign: TextAlign.center,
+                                textHeightBehavior: const TextHeightBehavior(
+                                  applyHeightToFirstAscent: false,
+                                  applyHeightToLastDescent: false,
+                                ),
+                                style: TextStyle(
+                                  fontSize: text == '%' ? 36 : 14,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w900,
+                                  color: BronzColors.ink,
+                                ),
+                              ),
+                            )
+                          : Center(child: Icon(icon, size: 26, color: BronzColors.ink)),
             ),
             const SizedBox(height: 8),
             Text(
