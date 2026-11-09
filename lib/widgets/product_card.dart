@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -41,8 +43,8 @@ class ProductCard extends StatelessWidget {
                     NetImage(p.image, padding: 18, background: BronzColors.tile),
                     if (!p.available)
                       const PositionedDirectional(top: 10, start: 10, child: _Pill('نفدت', BronzColors.faint))
-                    else if (off != null)
-                      PositionedDirectional(top: 10, start: 10, child: _Pill('-$off%', BronzColors.ink)),
+                    else if (p.saleEnd != null && p.saleEnd!.isAfter(DateTime.now()))
+                      PositionedDirectional(top: 10, start: 10, child: _Countdown(end: p.saleEnd!)),
                     PositionedDirectional(top: 8, end: 8, child: FavButton(product: p, size: 32)),
                   ],
                 ),
@@ -78,7 +80,14 @@ class ProductCard extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 6,
                     children: [
-                      Text(formatPrice(p.price), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                      Text(
+                        formatPrice(p.price),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: off != null ? _saleRed : BronzColors.ink,
+                        ),
+                      ),
                       if (p.oldPrice != null)
                         Text(
                           formatPrice(p.oldPrice!),
@@ -86,6 +95,16 @@ class ProductCard extends StatelessWidget {
                             fontSize: 12,
                             color: BronzColors.faint,
                             decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      if (off != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(color: _saleRedSoft, borderRadius: BorderRadius.circular(8)),
+                          child: Text(
+                            '-$off%',
+                            textDirection: TextDirection.ltr,
+                            style: const TextStyle(color: _saleRed, fontSize: 11.5, fontWeight: FontWeight.w800),
                           ),
                         ),
                     ],
@@ -96,6 +115,58 @@ class ProductCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// أحمر العروض (مثل بطاقات المتاجر الكبيرة)
+const _saleRed = Color(0xFFE5484D);
+const _saleRedSoft = Color(0xFFFDE8E9);
+
+/// عدّاد «ينتهي بعد: 12:05:56» يتحدّث كل ثانية.
+class _Countdown extends StatefulWidget {
+  final DateTime end;
+  const _Countdown({required this.end});
+
+  @override
+  State<_Countdown> createState() => _CountdownState();
+}
+
+class _CountdownState extends State<_Countdown> {
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  String _fmt(Duration d) {
+    if (d.isNegative) return 'انتهى';
+    if (d.inDays >= 1) return '${d.inDays} يوم و ${(d.inHours % 24).toString().padLeft(2, '0')} ساعة';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.inHours)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = widget.end.difference(DateTime.now());
+    if (left.isNegative) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: _saleRed, borderRadius: BorderRadius.circular(8)),
+      child: Text(
+        'ينتهي بعد: ${_fmt(left)}',
+        style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700),
       ),
     );
   }
