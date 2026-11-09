@@ -1,14 +1,21 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/theme.dart';
 
 const splashAsset = 'assets/branding/BRONZ_splash_graphite.png';
+
+/// شاشة «الجمعة البيضاء» الافتتاحية — false يرجّع الشاشة العادية.
+/// الخلفية تتولّد وقت البناء (ci/make_bf_splash.py) والشريطان يرسمهم التطبيق متحركين.
+const kWhiteFriday = true;
+const splashWfAsset = 'assets/branding/BRONZ_splash_wf_bg.png';
 
 // ───────── التنبيه الأنيق ─────────
 
@@ -168,6 +175,7 @@ class BrandSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kWhiteFriday) return const _WhiteFridaySplash();
     return Container(
       color: Colors.white,
       child: Image.asset(
@@ -178,6 +186,126 @@ class BrandSplash extends StatelessWidget {
         gaplessPlayback: true,
       ),
     );
+  }
+}
+
+/// الخلفية بنفس قصّ الصورة الأصلية (cover)، وفوقها شريطان أصفران بنفس مكانهم في الصورة
+/// والكتابة داخلهم تمشي من اليسار لليمين.
+class _WhiteFridaySplash extends StatefulWidget {
+  const _WhiteFridaySplash();
+
+  @override
+  State<_WhiteFridaySplash> createState() => _WhiteFridaySplashState();
+}
+
+class _WhiteFridaySplashState extends State<_WhiteFridaySplash> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..repeat();
+
+  // أبعاد صورة الخلفية ومواضع الشريطين (نفس ci/make_bf_splash.py)
+  static const _iw = 1440.0, _ih = 2560.0;
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final sw = box.maxWidth, sh = box.maxHeight;
+      final s = math.max(sw / _iw, sh / _ih);
+      final dx = (sw - _iw * s) / 2, dy = (sh - _ih * s) / 2;
+
+      Widget tape(String text, double deg, double cyFrac) {
+        final tw = _iw * 1.9 * s, th = 150 * s;
+        final cx = dx + _iw / 2 * s, cy = dy + _ih * cyFrac * s;
+        return Positioned(
+          left: cx - tw / 2,
+          top: cy - th / 2,
+          width: tw,
+          height: th,
+          child: Transform.rotate(
+            angle: deg * math.pi / 180,
+            child: _MovingTape(text: text, scale: s, anim: _c),
+          ),
+        );
+      }
+
+      return ColoredBox(
+        color: const Color(0xFF0A0A0A),
+        child: Stack(
+          children: [
+            Positioned(
+              left: dx,
+              top: dy,
+              width: _iw * s,
+              height: _ih * s,
+              child: Image.asset(
+                splashWfAsset,
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => Image.asset(splashAsset, fit: BoxFit.cover),
+              ),
+            ),
+            tape('BLACK FRIDAY', 11, 0.17),
+            tape('WHITE FRIDAY', -9, 0.86),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _MovingTape extends StatelessWidget {
+  final String text;
+  final double scale;
+  final Animation<double> anim;
+  const _MovingTape({required this.text, required this.scale, required this.anim});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = GoogleFonts.cairo(
+      fontSize: 70 * scale,
+      fontWeight: FontWeight.w900,
+      color: const Color(0xFF0C0C0C),
+      height: 1.0,
+    );
+    final label = '$text  •  ';
+    final tp = TextPainter(text: TextSpan(text: label, style: style), textDirection: TextDirection.ltr)..layout();
+    final seg = tp.width + 30 * scale;
+    return LayoutBuilder(builder: (context, box) {
+      final n = (box.maxWidth / seg).ceil() + 2;
+      return Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD600),
+          border: Border.symmetric(horizontal: BorderSide(color: const Color(0xFF141414), width: 8 * scale)),
+          boxShadow: const [BoxShadow(color: Color(0x8C000000), blurRadius: 24, offset: Offset(6, 14))],
+        ),
+        child: ClipRect(
+          child: AnimatedBuilder(
+            animation: anim,
+            builder: (context, child) => Transform.translate(
+              offset: Offset(-seg + anim.value * seg, 0), // يسار ← يمين
+              child: child,
+            ),
+            child: OverflowBox(
+              alignment: Alignment.centerLeft,
+              maxWidth: double.infinity,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: TextDirection.ltr,
+                children: [
+                  for (var i = 0; i < n; i++)
+                    SizedBox(width: seg, child: Text(label, style: style, maxLines: 1, softWrap: false)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
 
