@@ -205,7 +205,9 @@ class AppConfig {
   final List<HomeBlock> blocks;
   final PopupConfig? popup;
   final List<BrandInfo> brands;
-  const AppConfig({required this.blocks, this.popup, this.brands = const []});
+  /// نهاية حملة العروض (من اللوحة) — عدّاد «ينتهي بعد» على المنتجات المخفّضة
+  final DateTime? saleEnd;
+  const AppConfig({required this.blocks, this.popup, this.brands = const [], this.saleEnd});
 
   factory AppConfig.fromJson(Map<String, dynamic> m) => AppConfig(
         blocks: (m['blocks'] is List ? m['blocks'] as List : const [])
@@ -219,6 +221,7 @@ class AppConfig {
             .map(BrandInfo.fromJson)
             .where((b) => b.ids.isNotEmpty && (b.en.isNotEmpty || b.ar.isNotEmpty))
             .toList(),
+        saleEnd: DateTime.tryParse('${m['saleEnd'] ?? ''}'.trim()),
       );
 }
 
