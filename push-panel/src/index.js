@@ -42,6 +42,9 @@ const DEFAULT_BLOCKS = [
     .map((id) => ({ type: 'products', source: 'category', id, title: catName(id), style: 'rail', limit: 10 })),
 ];
 
+// نهاية حملة العروض الافتراضية (الجمعة البيضاء) — تتغيّر من اللوحة
+const DEFAULT_SALE_END = '2026-11-25T23:59:59+03:00';
+
 const DEFAULT_POPUP = { active: false, id: '', image: '', title: '', body: '', button: 'تسوّق الآن', open: 'offers', value: '', freq: 'once' };
 
 const CORS = {
@@ -102,7 +105,8 @@ async function loadConfig(env) {
   let c = {};
   try { c = raw ? JSON.parse(raw) : {}; } catch { c = {}; }
   const blocks = Array.isArray(c.blocks) ? c.blocks : (c.circles || c.rails ? migrate(c) : DEFAULT_BLOCKS);
-  return { v: c.v || 0, blocks, popup: { ...DEFAULT_POPUP, ...(c.popup || {}) } };
+  const saleEnd = typeof c.saleEnd === 'string' ? c.saleEnd : DEFAULT_SALE_END;
+  return { v: c.v || 0, blocks, popup: { ...DEFAULT_POPUP, ...(c.popup || {}) }, saleEnd };
 }
 
 async function getConfig(env) {
@@ -298,7 +302,10 @@ function clean(c) {
     value: str(p.value, 500),
     freq: ['once', 'daily', 'always'].includes(p.freq) ? p.freq : 'once',
   };
-  return { v: Date.now(), blocks, popup };
+  // موعد نهاية العروض: تاريخ صالح أو فاضي (بدون عدّاد)
+  const se = str(c.saleEnd, 40);
+  const saleEnd = se && !Number.isNaN(Date.parse(se)) ? se : '';
+  return { v: Date.now(), blocks, popup, saleEnd };
 }
 
 // ───────── الروابط المختصرة ─────────
