@@ -360,17 +360,23 @@ class BrandBadge extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         alignment: Alignment.center,
         child: brand.logo.isNotEmpty
-            ? NetImage(brand.logo, padding: size * 0.16)
+            // الشعار المرفوع من اللوحة جاهز (أسود على أبيض بمقاس موحّد) — يعبّي الدائرة
+            ? NetImage(brand.logo, padding: size * 0.04)
+            // بدون شعار: الاسم بخط ثابت لكل الماركات (سطرين كحد أقصى)
             : Padding(
-                padding: EdgeInsets.all(size * 0.1),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    textDirection: brand.en.isNotEmpty ? TextDirection.ltr : TextDirection.rtl,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.4, height: 1.1),
+                padding: EdgeInsets.symmetric(horizontal: size * 0.12),
+                child: Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textDirection: brand.en.isNotEmpty ? TextDirection.ltr : TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: size * 0.135,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                    height: 1.15,
+                    color: BronzColors.ink,
                   ),
                 ),
               ),
