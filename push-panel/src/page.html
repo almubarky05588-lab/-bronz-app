@@ -89,6 +89,16 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end}
 .sheetBox{background:#fff;width:100%;max-width:540px;margin:0 auto;border-radius:24px 24px 0 0;padding:20px 16px max(18px,env(safe-area-inset-bottom))}
 .sheetBox .h{margin-bottom:6px;text-align:center}
+.br{display:flex;align-items:center;gap:10px}
+.blogo{flex:none;width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line);background:#fff center/72% no-repeat;display:grid;place-items:center;font-size:9px;font-weight:800;text-align:center;line-height:1.1;padding:4px;overflow:hidden;cursor:pointer;direction:ltr}
+.br .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.br .nm input{padding:8px 10px;font-size:14px;border-radius:10px}
+.cnt{font-size:12px;color:var(--mute)}
+.plist{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.prow img{width:36px;height:36px;border-radius:8px;object-fit:contain;background:#fff;flex:none}
+.prow span{flex:1;min-width:0;line-height:1.4}
+.prow select{flex:0 0 40%;padding:7px;font-size:12px;border-radius:10px}
 </style>
 </head>
 <body>
@@ -101,6 +111,7 @@ textarea{resize:none;min-height:86px;line-height:1.6}
   <button data-t="send" class="on">الإشعارات</button>
   <button data-t="home">الرئيسية</button>
   <button data-t="popup">البوب اب</button>
+  <button data-t="brands">الماركات</button>
 </nav>
 
 <!-- ═════════ الإشعارات ═════════ -->
@@ -209,6 +220,19 @@ textarea{resize:none;min-height:86px;line-height:1.6}
   </div>
 </section>
 
+<!-- ═════════ الماركات ═════════ -->
+<section id="t-brands" class="hide">
+  <p class="hint" style="margin:0 4px 10px">كل ماركة وتحتها منتجاتها. اضغط الدائرة لرفع شعار (أي صورة — تتحوّل تلقائيًا لأسود على أبيض). رتّب بالأسهم، والمخفية ما تظهر في التطبيق. افتح «المنتجات» عشان تراجع وتنقل أي منتج.</p>
+  <div class="card"><input id="bSearch" placeholder="ابحث عن ماركة…"></div>
+  <div id="brandList"></div>
+  <button class="btn2 wide" id="bAdd" style="margin-bottom:12px">＋ ماركة جديدة</button>
+  <div class="card" id="unCard">
+    <div class="sw"><div><div class="h">بدون ماركة</div><p class="hint" id="unHint"></p></div><button class="btn2" id="unToggle">عرض</button></div>
+    <div id="unList" class="plist hide"></div>
+  </div>
+</section>
+<input type="file" id="logoIn" accept="image/*" class="hide">
+
 <div class="save hide" id="saveBar"><button class="btn" id="saveCfg">حفظ ونشر للتطبيق</button></div>
 <div class="toast" id="toast"></div>
 
@@ -234,9 +258,10 @@ document.querySelectorAll('#tabs button').forEach(function (b) {
   b.onclick = function () {
     tab = b.getAttribute('data-t');
     document.querySelectorAll('#tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
-    ['send', 'home', 'popup'].forEach(function (t) { $('t-' + t).classList.toggle('hide', t !== tab); });
+    ['send', 'home', 'popup', 'brands'].forEach(function (t) { $('t-' + t).classList.toggle('hide', t !== tab); });
     $('saveBar').classList.toggle('hide', tab === 'send');
-    if (tab !== 'send') loadCfg();
+    if (tab === 'home' || tab === 'popup') loadCfg();
+    if (tab === 'brands') loadBrands();
   };
 });
 
@@ -559,6 +584,7 @@ function askPin() {
 $('lockBtn').onclick = function () { LS.del(PIN); LS.del(KEY); showKey(); toast('انقفلت اللوحة على هذا الجهاز'); };
 
 $('saveCfg').onclick = function () {
+  if (tab === 'brands') return saveBrands();
   if (!cfg) return;
   var pin = askPin(); if (!pin) return toast('لازم رمز سري للحفظ');
   pop.active = $('pActive').checked; pop.title = $('pTitle').value; pop.body = $('pBody').value;
@@ -577,6 +603,202 @@ $('saveCfg').onclick = function () {
     .catch(function () { toast('تعذّر الاتصال'); })
     .then(function () { btn.disabled = false; btn.textContent = 'حفظ ونشر للتطبيق'; });
 };
+
+/* ───── الماركات ───── */
+var BR = null, NAMES = {}, openBrand = -1, unPage = 0, unOpen = false, logoTarget = null;
+function loadBrands() {
+  if (BR) return;
+  fetch('/brands').then(function (r) { return r.json(); }).then(function (o) { BR = o; renderBrands(); })
+    .catch(function () { toast('تعذّر تحميل الماركات'); });
+}
+function fetchNames(ids, cb) {
+  var need = ids.filter(function (id) { return !NAMES[id]; });
+  if (!need.length) return cb();
+  var chunks = [];
+  for (var i = 0; i < need.length; i += 40) chunks.push(need.slice(i, i + 40));
+  Promise.all(chunks.map(function (c) {
+    return fetch('/pnames', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: c }) })
+      .then(function (r) { return r.json(); }).then(function (o) { Object.keys(o.names || {}).forEach(function (k) { NAMES[k] = o.names[k]; }); });
+  })).then(cb).catch(cb);
+}
+function brandSelect(current, onPick) {
+  var sel = el('select');
+  opt(sel, '-1', '— بدون ماركة —');
+  BR.brands.forEach(function (b, i) { opt(sel, String(i), b.ar || b.en); });
+  sel.value = String(current);
+  sel.onchange = function () { onPick(Number(sel.value)); };
+  return sel;
+}
+function moveProduct(id, from, to) {
+  var src = from < 0 ? BR.unassigned : BR.brands[from].ids;
+  var k = src.indexOf(id); if (k >= 0) src.splice(k, 1);
+  (to < 0 ? BR.unassigned : BR.brands[to].ids).unshift(id);
+  renderBrands(); toast('انتقل ✓ — لا تنسى «حفظ ونشر»');
+}
+function productRow(id, from) {
+  var n = NAMES[id] || { name: '…', image: '' };
+  var row = el('div', 'prow');
+  var im = el('img'); if (n.image) im.src = n.image; row.appendChild(im);
+  row.appendChild(el('span', '', n.name));
+  row.appendChild(brandSelect(from, function (to) { moveProduct(id, from, to); }));
+  return row;
+}
+function logoBox(b) {
+  var d = el('div', 'blogo');
+  if (b.logo) d.style.backgroundImage = 'url("' + b.logo + '")'; else d.textContent = b.en || b.ar;
+  d.onclick = function () { logoTarget = b; $('logoIn').value = ''; $('logoIn').click(); };
+  return d;
+}
+function renderBrands() {
+  var box = $('brandList'); box.innerHTML = '';
+  var q = ($('bSearch').value || '').trim().toLowerCase();
+  BR.brands.forEach(function (b, i) {
+    if (q && (b.ar + ' ' + b.en).toLowerCase().indexOf(q) < 0) return;
+    var card = el('div', 'card blk' + (b.hidden ? ' off' : ''));
+    var r = el('div', 'br');
+    r.appendChild(logoBox(b));
+    var nm = el('div', 'nm');
+    var a = el('input'); a.value = b.ar; a.placeholder = 'الاسم بالعربي'; a.oninput = function () { b.ar = a.value; };
+    var e = el('input'); e.value = b.en; e.dir = 'ltr'; e.placeholder = 'NAME IN ENGLISH'; e.oninput = function () { b.en = e.value.toUpperCase(); };
+    nm.appendChild(a); nm.appendChild(e); r.appendChild(nm);
+    var ctl = el('div', 'ctl');
+    ctl.appendChild(mkBtn('↑', function () { if (i > 0) { var t = BR.brands[i - 1]; BR.brands[i - 1] = b; BR.brands[i] = t; renderBrands(); } }));
+    ctl.appendChild(mkBtn('↓', function () { if (i < BR.brands.length - 1) { var t = BR.brands[i + 1]; BR.brands[i + 1] = b; BR.brands[i] = t; renderBrands(); } }));
+    ctl.appendChild(mkBtn(b.hidden ? '🙈' : '👁', function () { b.hidden = !b.hidden; renderBrands(); }));
+    r.appendChild(ctl); card.appendChild(r);
+    var bar = el('div', 'sw row');
+    bar.appendChild(el('span', 'cnt', b.ids.length + ' منتج'));
+    var tg = mkBtn(openBrand === i ? 'إخفاء المنتجات' : 'المنتجات ▾', function () { openBrand = openBrand === i ? -1 : i; renderBrands(); }, 'btn2');
+    bar.appendChild(tg); card.appendChild(bar);
+    if (openBrand === i) {
+      var pl = el('div', 'plist');
+      var add = el('div', 'add');
+      var li = el('input'); li.dir = 'ltr'; li.placeholder = 'أضف منتج برابطه';
+      add.appendChild(li);
+      add.appendChild(mkBtn('إضافة', function () { addByLink(li.value, i); }, 'btn2'));
+      pl.appendChild(add);
+      var list = el('div'); pl.appendChild(list);
+      list.appendChild(el('p', 'hint', 'جاري تحميل الأسماء…'));
+      fetchNames(b.ids, function () {
+        list.innerHTML = '';
+        b.ids.forEach(function (id) { list.appendChild(productRow(id, i)); });
+        if (!b.ids.length) list.appendChild(el('p', 'hint', 'ما فيها منتجات'));
+      });
+      card.appendChild(pl);
+    }
+    box.appendChild(card);
+  });
+  $('unHint').textContent = BR.unassigned.length + ' منتج (إكسسوارات، عروض، بدائل، ومنتجات بدون اسم ماركة)';
+  if (unOpen) renderUnassigned();
+}
+function renderUnassigned() {
+  var box = $('unList'); box.innerHTML = '';
+  var slice = BR.unassigned.slice(0, (unPage + 1) * 30);
+  box.appendChild(el('p', 'hint', 'جاري تحميل الأسماء…'));
+  fetchNames(slice, function () {
+    box.innerHTML = '';
+    slice.forEach(function (id) { box.appendChild(productRow(id, -1)); });
+    if (slice.length < BR.unassigned.length) box.appendChild(mkBtn('عرض المزيد', function () { unPage++; renderUnassigned(); }, 'btn2 wide'));
+  });
+}
+$('unToggle').onclick = function () { unOpen = !unOpen; $('unList').classList.toggle('hide', !unOpen); $('unToggle').textContent = unOpen ? 'إخفاء' : 'عرض'; if (unOpen) renderUnassigned(); };
+$('bSearch').oninput = function () { if (BR) renderBrands(); };
+$('bAdd').onclick = function () {
+  if (!BR) return;
+  var n = prompt('اسم الماركة بالعربي:', ''); if (!n) return;
+  BR.brands.unshift({ en: '', ar: n.trim(), logo: '', hidden: false, ids: [] }); openBrand = 0; renderBrands();
+};
+function addByLink(link, i) {
+  link = (link || '').trim(); if (!link) return;
+  var m = link.match(/\/p(\d+)/) || link.match(/^(\d+)$/);
+  var done = function (id) {
+    if (!id) return toast('ما قدرت أقرأ رقم المنتج من الرابط');
+    id = Number(id);
+    BR.brands.forEach(function (b) { var k = b.ids.indexOf(id); if (k >= 0) b.ids.splice(k, 1); });
+    var u = BR.unassigned.indexOf(id); if (u >= 0) BR.unassigned.splice(u, 1);
+    BR.brands[i].ids.unshift(id); renderBrands(); toast('انضاف ✓ — لا تنسى «حفظ ونشر»');
+  };
+  if (m) return done(m[1]);
+  toast('جاري قراءة الرابط…');
+  fetch('/resolve?url=' + encodeURIComponent(link)).then(function (r) { return r.json(); })
+    .then(function (o) { var mm = (o.url || '').match(/\/p(\d+)/); done(mm && mm[1]); })
+    .catch(function () { toast('تعذّر قراءة الرابط'); });
+}
+
+/* تحويل الشعار: أسود على أبيض، بدون فراغات، بمقاس موحّد */
+function processLogo(file) {
+  return new Promise(function (ok, bad) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var k = Math.min(1, 900 / Math.max(img.width, img.height));
+      var w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var g = c.getContext('2d'); g.drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+      var d = g.getImageData(0, 0, w, h).data;
+      // الخلفية: شفافة؟ وإلا لون الحواف
+      var border = [], transp = 0, total = 0;
+      for (var x = 0; x < w; x++) { border.push((x) * 4, ((h - 1) * w + x) * 4); }
+      for (var y = 0; y < h; y++) { border.push((y * w) * 4, (y * w + w - 1) * 4); }
+      var br = 0, bg = 0, bb = 0;
+      border.forEach(function (i) { total++; if (d[i + 3] < 40) transp++; else { br += d[i]; bg += d[i + 1]; bb += d[i + 2]; } });
+      var useAlpha = transp > total * 0.5, solid = Math.max(1, total - transp);
+      br /= solid; bg /= solid; bb /= solid;
+      var ink = new Float32Array(w * h), minX = w, minY = h, maxX = 0, maxY = 0;
+      for (var p = 0, n = w * h; p < n; p++) {
+        var i = p * 4, a = d[i + 3] / 255, v;
+        if (useAlpha) v = a;
+        else {
+          var dist = Math.sqrt((d[i] - br) * (d[i] - br) + (d[i + 1] - bg) * (d[i + 1] - bg) + (d[i + 2] - bb) * (d[i + 2] - bb)) / 441;
+          v = Math.min(1, Math.max(0, (dist - 0.08) / 0.32)) * a;
+        }
+        ink[p] = v;
+        if (v > 0.15) { var px = p % w, py = (p / w) | 0; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py; }
+      }
+      if (maxX <= minX || maxY <= minY) return bad(new Error('ما لقيت شعار واضح في الصورة'));
+      var cw = maxX - minX + 1, ch = maxY - minY + 1;
+      var tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = ch;
+      var tg = tmp.getContext('2d'), out = tg.createImageData(cw, ch);
+      for (var yy = 0; yy < ch; yy++) for (var xx = 0; xx < cw; xx++) {
+        var v2 = ink[(yy + minY) * w + xx + minX], o = (yy * cw + xx) * 4;
+        var c2 = Math.round(255 * (1 - v2)); out.data[o] = c2; out.data[o + 1] = c2; out.data[o + 2] = c2; out.data[o + 3] = 255;
+      }
+      tg.putImageData(out, 0, 0);
+      var S = 600, box = S * 0.72, sc = Math.min(box / cw, box / ch);
+      var fin = document.createElement('canvas'); fin.width = S; fin.height = S;
+      var fg = fin.getContext('2d'); fg.fillStyle = '#fff'; fg.fillRect(0, 0, S, S);
+      fg.imageSmoothingQuality = 'high';
+      fg.drawImage(tmp, (S - cw * sc) / 2, (S - ch * sc) / 2, cw * sc, ch * sc);
+      fin.toBlob(function (bl) { bl ? ok(bl) : bad(new Error('تعذّر تجهيز الشعار')); }, 'image/png');
+    };
+    img.onerror = function () { bad(new Error('الصورة غير مدعومة')); };
+    img.src = url;
+  });
+}
+$('logoIn').onchange = function () {
+  var f = $('logoIn').files[0], b = logoTarget; if (!f || !b) return;
+  var pin = askPin(); if (!pin) return toast('لازم الرمز السري');
+  toast('جاري تجهيز الشعار…');
+  processLogo(f).then(function (blob) {
+    return fetch('/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-pin': pin }, body: blob });
+  }).then(function (r) { return r.json().then(function (o) {
+    if (r.status === 403) { LS.del(PIN); throw new Error('الرمز السري غير صحيح'); }
+    if (!r.ok || !o.url) throw new Error(o.error || 'ما انرفع');
+    b.logo = o.url; renderBrands(); toast('تم ✓ — لا تنسى «حفظ ونشر»');
+  }); }).catch(function (e) { toast(e.message); });
+};
+function saveBrands() {
+  if (!BR) return;
+  var pin = askPin(); if (!pin) return toast('لازم رمز سري للحفظ');
+  var btn = $('saveCfg'); btn.disabled = true; btn.textContent = 'جاري الحفظ…';
+  fetch('/brands', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': pin }, body: JSON.stringify(BR) })
+    .then(function (r) { return r.json().then(function (o) {
+      if (r.status === 403) { LS.del(PIN); toast('الرمز السري غير صحيح'); return; }
+      if (!r.ok) { toast(o.error || 'ما انحفظ'); return; }
+      BR = o.brands; renderBrands(); toast('انحفظ ✓ — يظهر في التطبيق عند فتحه');
+    }); })
+    .catch(function () { toast('تعذّر الاتصال'); })
+    .then(function () { btn.disabled = false; btn.textContent = 'حفظ ونشر للتطبيق'; });
+}
 
 showKey(); sendPreview();
 </script>
