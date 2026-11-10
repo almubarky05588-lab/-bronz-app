@@ -190,7 +190,7 @@ class StoreBridge {
     products: async function(a){
       var q = { source: a.source };
       if (a.value !== undefined && a.value !== null) {
-        q.source_value = (a.source === 'categories' || a.source === 'brands' || a.source === 'tags' || a.source === 'selected') ? [a.value] : a.value;
+        q.source_value = Array.isArray(a.value) ? a.value : ((a.source === 'categories' || a.source === 'brands' || a.source === 'tags' || a.source === 'selected') ? [a.value] : a.value);
       }
       if (a.page && a.page > 1) q.page = a.page;
       return await salla.api.product.fetch(q);
