@@ -161,6 +161,12 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 
 <!-- ═════════ الرئيسية ═════════ -->
 <section id="t-home" class="hide">
+  <div class="card">
+    <div class="h">⏱ عدّاد العروض</div>
+    <p class="hint" style="margin-bottom:10px">يظهر عدّاد «ينتهي بعد» أحمر على كل منتج مخفّض لين هذا الموعد، ويختفي تلقائيًا بعده. (المنتج اللي له تاريخ نهاية خاص في سلة يستخدم تاريخه.)</p>
+    <div class="add" style="margin-top:0"><input type="datetime-local" id="saleEnd" dir="ltr"><button class="btn2" id="saleEndClear">إيقاف</button></div>
+    <p class="hint" id="saleEndHint"></p>
+  </div>
   <p class="hint" style="margin:0 4px 10px">الرئيسية تتكوّن من قطع — رتّبها بالأسهم ↑↓، وأضف اللي تبي من تحت. الشعار والبحث ثابتين فوق.</p>
   <div id="blocks"></div>
   <div class="card">
@@ -327,7 +333,7 @@ function catName(id) { id = Number(id); for (var i = 0; i < cats.length; i++) if
 function loadCfg() {
   if (cfg) return;
   Promise.all([fetch('/config').then(function (r) { return r.json(); }), fetch('/meta').then(function (r) { return r.json(); })])
-    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; cfg.blocks = cfg.blocks || []; renderHome(); fillPopup(); })
+    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; cfg.blocks = cfg.blocks || []; renderHome(); fillPopup(); fillSaleEnd(); })
     .catch(function () { toast('تعذّر تحميل الإعدادات'); });
 }
 
@@ -574,6 +580,27 @@ $('pFetch').onclick = function () {
     .catch(function (e) { toast(e.message); });
 };
 
+/* ───── عدّاد العروض (بتوقيت السعودية) ───── */
+function fillSaleEnd() {
+  var v = cfg.saleEnd || '';
+  var d = v ? new Date(v) : null;
+  if (d && !isNaN(d)) {
+    var r = new Date(d.getTime() + 3 * 3600 * 1000); // تحويل للتوقيت السعودي
+    $('saleEnd').value = r.toISOString().slice(0, 16);
+  } else $('saleEnd').value = '';
+  saleEndHint();
+}
+function saleEndHint() {
+  var v = $('saleEnd').value;
+  if (!v) { $('saleEndHint').textContent = 'العدّاد متوقف.'; return; }
+  var left = new Date(v + ':00+03:00').getTime() - Date.now();
+  if (left <= 0) { $('saleEndHint').textContent = 'الموعد انتهى — العدّاد ما يظهر.'; return; }
+  var days = Math.floor(left / 864e5), hrs = Math.floor(left % 864e5 / 36e5);
+  $('saleEndHint').textContent = 'باقي ' + days + ' يوم و ' + hrs + ' ساعة (بتوقيت السعودية).';
+}
+$('saleEnd').oninput = saleEndHint;
+$('saleEndClear').onclick = function () { $('saleEnd').value = ''; saleEndHint(); };
+
 /* ───── الحفظ ───── */
 function askPin() {
   var p = LS.get(PIN); if (p) return p;
@@ -593,12 +620,13 @@ $('saveCfg').onclick = function () {
   if (popKey(pop) !== popSnap || !pop.id) pop.id = String(Date.now());
   if (pop.active && !pop.title.trim() && !pop.body.trim() && !pop.image) return toast('البوب اب: أضف صورة أو عنوان أو نص');
   cfg.popup = pop;
+  cfg.saleEnd = $('saleEnd').value ? $('saleEnd').value + ':00+03:00' : '';
   var btn = $('saveCfg'); btn.disabled = true; btn.textContent = 'جاري الحفظ…';
   fetch('/config', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': pin }, body: JSON.stringify(cfg) })
     .then(function (r) { return r.json().then(function (o) {
       if (r.status === 403) { LS.del(PIN); toast('الرمز السري غير صحيح'); return; }
       if (!r.ok) { toast(o.error || 'ما انحفظ'); return; }
-      cfg = o.config; renderHome(); fillPopup(); toast('انحفظ ✓ — سكّر التطبيق وافتحه تشوفه');
+      cfg = o.config; renderHome(); fillPopup(); fillSaleEnd(); toast('انحفظ ✓ — سكّر التطبيق وافتحه تشوفه');
     }); })
     .catch(function () { toast('تعذّر الاتصال'); })
     .then(function () { btn.disabled = false; btn.textContent = 'حفظ ونشر للتطبيق'; });
