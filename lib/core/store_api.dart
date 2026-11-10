@@ -85,23 +85,45 @@ class StoreApi {
         () => _b.get('products?source=latest&sort=$sort${page > 1 ? '&page=$page' : ''}'),
       );
 
-  /// الأكثر مبيعًا.
-  static Future<List<Product>> bestSellers({int page = 1}) async {
+  /// هل القائمة هي نفسها «وصل حديثًا»؟ (سلة تتجاهل الترتيب أحيانًا وترجع الأحدث)
+  static Future<bool> _sameAsLatest(List<Product> l) async {
+    if (l.isEmpty) return false;
     try {
-      final l = await _sorted('bestSell', page);
-      if (l.isNotEmpty || page > 1) return l;
-    } catch (_) {}
-    try {
-      return await _list('sales', page: page);
+      final fresh = await latest();
+      final n = l.length < 6 ? l.length : 6;
+      if (fresh.length < n) return false;
+      for (var i = 0; i < n; i++) {
+        if (fresh[i].id != l[i].id) return false;
+      }
+      return true;
     } catch (_) {
-      return const [];
+      return false;
     }
   }
 
-  /// الأعلى تقييمًا.
+  /// الأكثر مبيعًا — ولو رجعت سلة نفس «وصل حديثًا» نرجع قائمة فاضية
+  /// فيختفي القسم بدل ما يتكرر.
+  static Future<List<Product>> bestSellers({int page = 1}) async {
+    for (final load in <Future<List<Product>> Function()>[
+      () => _list('sales', page: page),
+      () => _sorted('bestSell', page),
+    ]) {
+      try {
+        final l = await load();
+        if (l.isEmpty) continue;
+        if (page == 1 && await _sameAsLatest(l)) continue;
+        return l;
+      } catch (_) {}
+    }
+    return const [];
+  }
+
+  /// الأعلى تقييمًا — بنفس الحماية من التكرار.
   static Future<List<Product>> topRated({int page = 1}) async {
     try {
-      return await _sorted('topRated', page);
+      final l = await _sorted('topRated', page);
+      if (page == 1 && await _sameAsLatest(l)) return const [];
+      return l;
     } catch (_) {
       return const [];
     }
