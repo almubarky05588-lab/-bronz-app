@@ -92,7 +92,17 @@ fb.setupGlyphOrder(order)
 fb.setupCharacterMap(cmap)
 empty = TTGlyphPen(None).glyph()
 fb.setupGlyf({k: (v if v is not None else empty) for k, v in glyphs.items()})
-fb.setupHorizontalMetrics({g: (UPM, 0) for g in order})
+# الإزاحة اليسرى (lsb) لازم تساوي بداية الرسم الفعلية (xMin) — لو صفر، آيفون يزيح الأيقونة لليسار
+glyf = fb.font['glyf']
+metrics = {}
+for g in order:
+    gl = glyf[g]
+    if getattr(gl, 'numberOfContours', 0):
+        gl.recalcBounds(glyf)
+        metrics[g] = (UPM, gl.xMin)
+    else:
+        metrics[g] = (UPM, 0)
+fb.setupHorizontalMetrics(metrics)
 fb.setupHorizontalHeader(ascent=int(UPM*0.875), descent=-int(UPM*0.125))
 fb.setupNameTable({'familyName': 'BronzIcons', 'styleName': 'Regular'})
 fb.setupOS2(sTypoAscender=int(UPM*0.875), sTypoDescender=-int(UPM*0.125), usWinAscent=int(UPM*0.875), usWinDescent=int(UPM*0.125))
