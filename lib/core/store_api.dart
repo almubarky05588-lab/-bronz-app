@@ -220,6 +220,20 @@ class StoreApi {
     return [for (final id in ids) if (byId[id] != null) byId[id]!];
   }
 
+  /// منتجات ماركة (أو أي قائمة أرقام) صفحة صفحة، بنفس ترتيب الأرقام.
+  static Future<List<Product>> byIds(List<int> ids, {int page = 1, int perPage = 20}) async {
+    final start = (page - 1) * perPage;
+    if (start >= ids.length) return const [];
+    final end = start + perPage < ids.length ? start + perPage : ids.length;
+    final slice = ids.sublist(start, end);
+    var found = <Product>[];
+    try {
+      found = await _page('ids|${slice.join(',')}', 1, () => _b.call('products', {'source': 'selected', 'value': slice}));
+    } catch (_) {}
+    final byId = {for (final p in found) p.id: p};
+    return [for (final id in slice) if (byId[id] != null) byId[id]!];
+  }
+
   /// التفاصيل الكاملة: الوصف، كل الصور، الماركة، التقييم، التصنيف.
   static Future<Product> details(int id) async {
     final res = await _b.call('details', {'id': id});

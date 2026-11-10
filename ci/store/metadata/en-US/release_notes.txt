@@ -1,5 +1,5 @@
-White Friday deals are here:
-• Countdown timer for every offer
-• Clearer discount prices on products
-• Send as a gift with premium wrapping and your message
+New in this release:
+• A fully redesigned categories page
+• Shop by brand: every brand and its products in one place
+• A new navigation bar with custom Bronz icons
 • Interface and performance improvements
