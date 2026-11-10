@@ -2,6 +2,7 @@
 // مفتاح OneSignal لا يُحفظ هنا: يرسله جوال صاحب المتجر مع كل إرسال.
 // الإعدادات والصور تُحفظ في KV (CONFIG) ويقرأها التطبيق من /config.
 import PAGE from './page.html';
+import BRANDS_SEED from './brands_seed.json';
 
 const APP_ID = 'da1ab6c7-deb4-458e-bfcb-6e41e150d686';
 const STORE_HOST = 'bronz-sa.com';
@@ -57,6 +58,10 @@ export default {
       if (url.pathname === '/config' && req.method === 'GET') return await getConfig(env);
       if (url.pathname === '/config' && req.method === 'POST') return await saveConfig(req, env);
       if (url.pathname === '/upload' && req.method === 'POST') return await upload(req, env, url);
+      if (url.pathname === '/brands' && req.method === 'GET') return json(await loadBrands(env), 200, { 'cache-control': 'no-store' });
+      if (url.pathname === '/brands' && req.method === 'POST') return await saveBrands(req, env);
+      if (url.pathname === '/pnames' && req.method === 'POST') return await productNames(req, env);
+      if (url.pathname === '/resolve' && req.method === 'GET') return json({ url: await resolveLink(url.searchParams.get('url') || '') });
       if (url.pathname.startsWith('/m/') && req.method === 'GET') return await media(env, url);
       if (url.pathname === '/meta' && req.method === 'GET') return json({ cats: CATS });
       if (url.pathname === '/og' && req.method === 'GET') return await ogImage(url);
@@ -101,7 +106,75 @@ async function loadConfig(env) {
 }
 
 async function getConfig(env) {
-  return json(await loadConfig(env), 200, { 'cache-control': 'no-store' });
+  const c = await loadConfig(env);
+  const b = await loadBrands(env);
+  // للتطبيق: الماركات الظاهرة فقط (بدون قائمة غير المربوطة)
+  c.brands = b.brands.filter((x) => !x.hidden && x.ids.length).map((x) => ({ en: x.en, ar: x.ar, logo: x.logo, ids: x.ids }));
+  return json(c, 200, { 'cache-control': 'no-store' });
+}
+
+// ───────── الماركات ─────────
+
+/** الماركات المحفوظة — أو القائمة الأولية المطابَقة من منتجات المتجر. */
+async function loadBrands(env) {
+  const raw = await env.CONFIG.get('brands');
+  let b = null;
+  try { b = raw ? JSON.parse(raw) : null; } catch { b = null; }
+  if (!b || !Array.isArray(b.brands)) b = BRANDS_SEED;
+  return {
+    brands: (b.brands || []).map((x) => ({ en: x.en || '', ar: x.ar || '', logo: x.logo || '', hidden: !!x.hidden, ids: x.ids || [] })),
+    unassigned: b.unassigned || [],
+  };
+}
+
+function cleanBrands(b) {
+  const seen = new Set();
+  const ids = (list) => (Array.isArray(list) ? list : []).map(Number).filter((n) => Number.isFinite(n) && n > 0 && !seen.has(n) && seen.add(n));
+  const brands = (Array.isArray(b.brands) ? b.brands : []).slice(0, 400).map((x) => ({
+    en: str(x.en, 40), ar: str(x.ar, 40), logo: str(x.logo, 600), hidden: !!x.hidden, ids: ids(x.ids),
+  })).filter((x) => x.en || x.ar);
+  return { brands, unassigned: ids(b.unassigned) };
+}
+
+async function saveBrands(req, env) {
+  const b = await req.json().catch(() => ({}));
+  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز السري غير صحيح' }, 403);
+  const c = cleanBrands(b);
+  await env.CONFIG.put('brands', JSON.stringify(c));
+  return json({ ok: true, brands: c });
+}
+
+/** أسماء المنتجات للمراجعة في اللوحة — تُقرأ من صفحة المنتج وتُحفظ. */
+async function productNames(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter((n) => n > 0).slice(0, 40);
+  const out = {};
+  const miss = [];
+  await Promise.all(ids.map(async (id) => {
+    const v = await env.CONFIG.get('pn:' + id);
+    if (v) out[id] = JSON.parse(v); else miss.push(id);
+  }));
+  for (let i = 0; i < miss.length; i += 8) {
+    await Promise.all(miss.slice(i, i + 8).map(async (id) => {
+      try {
+        const r = await fetch('https://' + STORE_HOST + '/ar/?product_id=' + id, { headers: { 'user-agent': 'Mozilla/5.0 (iPhone) BronzPanel' } });
+        const html = await r.text();
+        const pick = (p) => {
+          const m = html.match(new RegExp('<meta[^>]+property=["\']' + p + '["\'][^>]*content=["\']([^"\']+)', 'i'));
+          return m ? m[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim() : '';
+        };
+        let name = pick('og:title');
+        if (!name) { const t = html.match(/<title>([^<]+)<\/title>/i); name = t ? t[1].trim() : ''; }
+        name = name.replace(/\s*\|\s*.*$/, '').trim();
+        const item = { name: name || ('منتج ' + id), image: pick('og:image') };
+        out[id] = item;
+        if (name) await env.CONFIG.put('pn:' + id, JSON.stringify(item), { expirationTtl: 60 * 60 * 24 * 30 });
+      } catch {
+        out[id] = { name: 'منتج ' + id, image: '' };
+      }
+    }));
+  }
+  return json({ names: out });
 }
 
 async function sha(text) {
@@ -241,7 +314,7 @@ async function resolveLinks(c) {
 
 async function saveConfig(req, env) {
   const b = await req.json().catch(() => ({}));
-  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز غير صحيح' }, 403);
+  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز السري غير صحيح' }, 403);
   const c = clean(b);
   await resolveLinks(c);
   await env.CONFIG.put('config', JSON.stringify(c));
@@ -251,7 +324,7 @@ async function saveConfig(req, env) {
 // ───────── الصور ─────────
 
 async function upload(req, env, url) {
-  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز غير صحيح' }, 403);
+  if (!(await pinOk(env, req.headers.get('x-pin')))) return json({ error: 'الرمز السري غير صحيح' }, 403);
   const type = (req.headers.get('content-type') || 'image/jpeg').split(';')[0];
   if (!/^image\/(jpeg|png|webp|gif)$/.test(type)) return json({ error: 'نوع الصورة غير مدعوم' }, 400);
   const buf = await req.arrayBuffer();
