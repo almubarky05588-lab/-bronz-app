@@ -160,11 +160,14 @@ function cleanBlock(b) {
         })),
       };
     case 'products': {
-      const source = [...SPECIAL, 'category'].includes(b.source) ? b.source : 'latest';
+      const source = [...SPECIAL, 'category', 'custom'].includes(b.source) ? b.source : 'latest';
       const id = num(b.id);
       if (source === 'category' && !id) return null;
+      // روابط منتجات مثبّتة (تطلع أول القائمة) — أو كل القائمة لو المصدر custom
+      const links = (Array.isArray(b.links) ? b.links : []).map((l) => str(l, 500)).filter(Boolean).slice(0, 40);
+      if (source === 'custom' && !links.length) return null;
       return {
-        type: 'products', hidden, source, id,
+        type: 'products', hidden, source, id, links,
         title: str(b.title, 40),
         style: b.style === 'grid' ? 'grid' : 'rail',
         limit: Math.min(40, Math.max(2, Math.round(Number(b.limit) || 10))),
