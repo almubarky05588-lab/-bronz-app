@@ -401,12 +401,13 @@ function renderBlock(b, i) {
     var sp = el('div', 'sub mini');
     var src = el('select');
     Object.keys(SPECIAL).forEach(function (k) { opt(src, k, '★ ' + SPECIAL[k]); });
+    opt(src, 'custom', '✎ منتجات أختارها بالروابط');
     cats.forEach(function (c) { opt(src, 'c' + c.id, c.name); });
     src.value = b.source === 'category' ? 'c' + b.id : b.source;
     src.onchange = function () {
       var v = src.value, prev = b.source === 'category' ? catName(b.id) : SPECIAL[b.source];
       if (v[0] === 'c') { b.source = 'category'; b.id = Number(v.slice(1)); } else { b.source = v; b.id = undefined; }
-      if (!b.title || b.title === prev) b.title = b.source === 'category' ? catName(b.id) : SPECIAL[b.source];
+      if (!b.title || b.title === prev) b.title = b.source === 'category' ? catName(b.id) : (b.source === 'custom' ? 'منتجات مختارة' : SPECIAL[b.source]);
       renderHome();
     };
     sp.appendChild(src);
@@ -418,6 +419,20 @@ function renderBlock(b, i) {
     var st = el('div', 'row');
     st.appendChild(segOf({ rail: '▤ صف أفقي', grid: '▦ شبكة عمودين' }, b.style || 'rail', function (k) { b.style = k; renderHome(); }));
     card.appendChild(st);
+    // روابط منتجات: مثبّتة أول القائمة، أو القائمة كلها لو «منتجات أختارها»
+    var pin = el('div', 'sub');
+    pin.appendChild(el('p', 'hint', b.source === 'custom'
+      ? 'الصق روابط المنتجات — رابط في كل سطر. تظهر بنفس الترتيب.'
+      : 'منتجات تبيها تطلع أول هذا الصف (اختياري) — الصق رابط كل منتج في سطر.'));
+    var ta = el('textarea');
+    ta.dir = 'ltr'; ta.rows = 4; ta.style.width = '100%';
+    ta.placeholder = 'https://bronz-sa.com/ar/...';
+    ta.value = (b.links || []).join('\n');
+    ta.oninput = function () {
+      b.links = ta.value.split(/\s+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    };
+    pin.appendChild(ta);
+    card.appendChild(pin);
   }
   return card;
 }
