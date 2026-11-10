@@ -170,6 +170,14 @@ class HomeScreen extends StatelessWidget {
       case 'rated':
         title = b.title.isEmpty ? 'الأعلى تقييمًا' : b.title;
         source = StoreApi.topRated;
+      case 'custom':
+        // قائمة مختارة من لوحة برونز (روابط منتجات فقط)
+        if (b.links.isEmpty) return null;
+        title = b.title.isEmpty ? 'منتجات مختارة' : b.title;
+        source = ({int page = 1}) async {
+          if (page > 1) return const <Product>[];
+          return StoreApi.byLinks(b.links);
+        };
       case 'category':
         if (b.id == null) return null;
         final c = findCategory(b.id!) ?? StoreCategory(b.id!, b.title, Icons.category_outlined);
@@ -185,13 +193,28 @@ class HomeScreen extends StatelessWidget {
 
   Widget _rail(String title, Future<List<Product>> Function({int page}) source, VoidCallback onMore, HomeBlock b) =>
       ProductRail(
-        key: ValueKey('rail-${b.source}-${b.id}-${b.style}-${b.limit}'),
+        key: ValueKey('rail-${b.source}-${b.id}-${b.style}-${b.limit}-${b.links.join('|').hashCode}'),
         title: title,
         grid: b.style == 'grid',
         limit: b.limit,
-        loader: () => StoreApi.take((p) => source(page: p), b.limit),
+        loader: () => _withPinned(b, () => StoreApi.take((p) => source(page: p), b.limit)),
         onMore: onMore,
       );
+
+  /// المنتجات المثبّتة من اللوحة تطلع أول القائمة، وبعدها القائمة التلقائية (بدون تكرار).
+  static Future<List<Product>> _withPinned(HomeBlock b, Future<List<Product>> Function() auto) async {
+    if (b.links.isEmpty || b.source == 'custom') return auto();
+    final results = await Future.wait([
+      StoreApi.byLinks(b.links).catchError((_) => const <Product>[]),
+      auto(),
+    ]);
+    final out = <Product>[];
+    final seen = <int>{};
+    for (final p in [...results[0], ...results[1]]) {
+      if (seen.add(p.id)) out.add(p);
+    }
+    return out.length > b.limit ? out.sublist(0, b.limit) : out;
+  }
 
   String _greeting() {
     final h = DateTime.now().hour;
