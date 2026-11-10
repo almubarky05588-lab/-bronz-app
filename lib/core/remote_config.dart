@@ -98,8 +98,10 @@ class HomeBlock {
   final int rows; // 1 صف · 2 صفين · 3 شبكة كاملة
   final List<IconItem> items;
   // منتجات
-  final String source; // latest | best | rated | offers | category
+  final String source; // latest | best | rated | offers | category | custom
   final int? id;
+  /// منتجات مثبّتة بروابطها (تطلع أول القائمة) — أو كل القائمة لو المصدر custom
+  final List<String> links;
   final String style; // rail | grid
   final int limit;
 
@@ -112,6 +114,7 @@ class HomeBlock {
     this.items = const [],
     this.source = 'latest',
     this.id,
+    this.links = const [],
     this.style = 'rail',
     this.limit = 10,
   });
@@ -131,6 +134,10 @@ class HomeBlock {
             .toList(),
         source: '${m['source'] ?? 'latest'}',
         id: int.tryParse('${m['id'] ?? ''}'),
+        links: (m['links'] is List ? m['links'] as List : const [])
+            .map((e) => '$e'.trim())
+            .where((e) => e.isNotEmpty)
+            .toList(),
         style: m['style'] == 'grid' ? 'grid' : 'rail',
         limit: (int.tryParse('${m['limit'] ?? ''}') ?? 10).clamp(2, 40),
       );
