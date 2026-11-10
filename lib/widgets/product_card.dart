@@ -7,12 +7,23 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../core/cart.dart';
 import '../core/favorites.dart';
 import '../core/product.dart';
+import '../core/remote_config.dart';
 import '../core/theme.dart';
 import '../core/util.dart';
 import '../screens/cart_screen.dart';
 import '../screens/product_screen.dart';
 import 'common.dart';
 import 'motion.dart';
+
+/// موعد نهاية عرض المنتج: تاريخه الخاص في سلة إن كان قادمًا،
+/// وإلا موعد نهاية حملة العروض من لوحة برونز (للمنتجات المخفّضة فقط).
+DateTime? offerEnd(Product p) {
+  final now = DateTime.now();
+  if (p.saleEnd != null && p.saleEnd!.isAfter(now)) return p.saleEnd;
+  final campaign = RemoteConfig.instance.config.value?.saleEnd;
+  if ((p.discountPercent ?? 0) > 0 && campaign != null && campaign.isAfter(now)) return campaign;
+  return null;
+}
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -23,6 +34,7 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = product;
     final off = p.discountPercent;
+    final end = offerEnd(p);
     return SizedBox(
       width: width,
       child: Pressable(
@@ -43,8 +55,8 @@ class ProductCard extends StatelessWidget {
                     NetImage(p.image, padding: 18, background: BronzColors.tile),
                     if (!p.available)
                       const PositionedDirectional(top: 10, start: 10, child: _Pill('نفدت', BronzColors.faint))
-                    else if (p.saleEnd != null && p.saleEnd!.isAfter(DateTime.now()))
-                      PositionedDirectional(top: 10, start: 10, child: _Countdown(end: p.saleEnd!)),
+                    else if (end != null)
+                      PositionedDirectional(top: 10, start: 10, child: _Countdown(end: end)),
                     PositionedDirectional(top: 8, end: 8, child: FavButton(product: p, size: 32)),
                   ],
                 ),
@@ -150,23 +162,36 @@ class _CountdownState extends State<_Countdown> {
     super.dispose();
   }
 
+  /// أكثر من يوم: «باقي 15 يوم · 03:05:56» — أقل من يوم: «ينتهي بعد: 03:05:56»
   String _fmt(Duration d) {
-    if (d.isNegative) return 'انتهى';
-    if (d.inDays >= 1) return '${d.inDays} يوم و ${(d.inHours % 24).toString().padLeft(2, '0')} ساعة';
     String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(d.inHours)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
+    final clock = '${two(d.inHours % 24)}:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
+    if (d.inDays >= 1) return 'باقي ${d.inDays} يوم · $clock';
+    return 'ينتهي بعد: $clock';
   }
 
   @override
   Widget build(BuildContext context) {
     final left = widget.end.difference(DateTime.now());
     if (left.isNegative) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(color: _saleRed, borderRadius: BorderRadius.circular(8)),
-      child: Text(
-        'ينتهي بعد: ${_fmt(left)}',
-        style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 128),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: _saleRed, borderRadius: BorderRadius.circular(8)),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            _fmt(left),
+            maxLines: 1,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
       ),
     );
   }
