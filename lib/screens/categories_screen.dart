@@ -135,7 +135,7 @@ class CategoriesScreen extends StatelessWidget {
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 1.05,
+                  childAspectRatio: 0.92,
                 ),
                 itemCount: rest.length,
                 itemBuilder: (context, i) => FadeSlideIn(
@@ -244,7 +244,7 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-/// بطاقة قسم بلونه الخاص.
+/// بطاقة قسم بلونه الخاص — صورة كبيرة في المنتصف والاسم تحتها.
 class _TintCard extends StatelessWidget {
   final StoreCategory category;
   final Color color;
@@ -257,28 +257,35 @@ class _TintCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(BronzRadius.card)),
         clipBehavior: Clip.antiAlias,
-        child: Row(
+        child: Stack(
           children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 4, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(category.name,
-                        maxLines: 2,
-                        style: const TextStyle(fontSize: 14.5, height: 1.3, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 2),
-                    const Text('تسوّق الآن',
-                        style: TextStyle(fontSize: 11.5, color: BronzColors.muted, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              bottom: 50,
+              child: CategoryCover(categoryId: category.id, padding: 4, background: color),
             ),
-            SizedBox(
-              width: 72,
-              child: CategoryCover(categoryId: category.id, padding: 6, background: color),
+            PositionedDirectional(
+              start: 14,
+              end: 14,
+              bottom: 12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    category.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: BronzColors.ink),
+                  ),
+                  const Text(
+                    'تسوّق الآن',
+                    style: TextStyle(fontSize: 11.5, color: BronzColors.muted, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
