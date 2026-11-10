@@ -162,19 +162,40 @@ class StoreApi {
   }
 
   static final _covers = <int, Future<String>>{};
+  static final _usedCovers = <String>{};
+  static Future<void> _coverChain = Future.value();
 
-  /// صورة غلاف القسم: صورة أول منتج فيه.
-  static Future<String> categoryCover(int id) => _covers.putIfAbsent(id, () async {
-        try {
-          final list = await byCategory(id);
-          for (final p in list) {
-            if (p.image.isNotEmpty) return p.image;
-          }
-        } catch (_) {
-          _covers.remove(id);
-        }
-        return '';
+  /// صورة غلاف القسم: أول منتج فيه لم تُستخدم صورته غلافًا لقسم آخر،
+  /// حتى لا تتكرر نفس الصورة في رجالي ونسائي وللجنسين.
+  /// الأقسام تُحسب بالترتيب (سلسلة) ليكون الاختيار ثابتًا.
+  static Future<String> categoryCover(int id) => _covers.putIfAbsent(id, () {
+        final f = _coverChain.then((_) => _pickCover(id));
+        _coverChain = f.then((_) {}, onError: (_) {});
+        return f;
       });
+
+  static const _unisexIds = {886820816, 1783479303};
+
+  static Future<String> _pickCover(int id) async {
+    try {
+      final list = (await byCategory(id)).where((p) => p.image.isNotEmpty).toList();
+      if (list.isEmpty) return '';
+      final unisexCat = _unisexIds.contains(id);
+      bool fits(Product p) => unisexCat || !p.name.contains('للجنسين');
+      final pick = list.firstWhere(
+        (p) => !_usedCovers.contains(p.image) && fits(p),
+        orElse: () => list.firstWhere(
+          (p) => !_usedCovers.contains(p.image),
+          orElse: () => list.first,
+        ),
+      );
+      _usedCovers.add(pick.image);
+      return pick.image;
+    } catch (_) {
+      _covers.remove(id);
+      return '';
+    }
+  }
 
   // ───────── حساب العميل ─────────
 
