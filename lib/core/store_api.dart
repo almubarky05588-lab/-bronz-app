@@ -263,6 +263,16 @@ class StoreApi {
   }
 
   static final _covers = <int, Future<String>>{};
+  static final _coverCands = <int, List<String>>{};
+
+  /// صورة الغلاف + بدائل (لو فشل تحميل الأولى تُجرَّب اللي بعدها).
+  static final _coverLists = <int, Future<List<String>>>{};
+  static Future<List<String>> categoryCovers(int id) => _coverLists.putIfAbsent(id, () async {
+        final first = await categoryCover(id);
+        final list = _coverCands[id] ?? (first.isEmpty ? const <String>[] : [first]);
+        if (list.isEmpty) _coverLists.remove(id); // نعيد المحاولة لاحقًا
+        return list;
+      });
   static final _usedCovers = <String>{};
   static Future<void> _coverChain = Future.value();
 
@@ -291,6 +301,10 @@ class StoreApi {
         ),
       );
       _usedCovers.add(pick.image);
+      _coverCands[id] = [
+        pick.image,
+        ...list.map((p) => p.image).where((u) => u != pick.image && !_usedCovers.contains(u)).take(5),
+      ];
       return pick.image;
     } catch (_) {
       _covers.remove(id);
