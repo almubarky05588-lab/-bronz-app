@@ -115,16 +115,50 @@ async function getConfig(env) {
 
 // ───────── الماركات ─────────
 
-/** الماركات المحفوظة — أو القائمة الأولية المطابَقة من منتجات المتجر. */
+const SEED_V = BRANDS_SEED.v || 1;
+
+/** الماركات المحفوظة — أو القائمة الأولية المطابَقة من منتجات المتجر.
+ *  لو صدرت قائمة أولية أحدث: تُدمج الماركات الجديدة والمنتجات غير المربوطة مع تعديلات صاحب المتجر. */
 async function loadBrands(env) {
   const raw = await env.CONFIG.get('brands');
   let b = null;
   try { b = raw ? JSON.parse(raw) : null; } catch { b = null; }
   if (!b || !Array.isArray(b.brands)) b = BRANDS_SEED;
+  else if ((b.v || 1) < SEED_V) {
+    b = mergeSeed(b);
+    await env.CONFIG.put('brands', JSON.stringify(b));
+  }
   return {
+    v: SEED_V,
     brands: (b.brands || []).map((x) => ({ en: x.en || '', ar: x.ar || '', logo: x.logo || '', hidden: !!x.hidden, ids: x.ids || [] })),
     unassigned: b.unassigned || [],
   };
+}
+
+function mergeSeed(b) {
+  const out = { v: SEED_V, brands: b.brands.map((x) => ({ ...x, ids: (x.ids || []).map(Number) })) };
+  const key = (x) => String(x.en || x.ar || '').trim().toUpperCase();
+  const byKey = new Map(out.brands.map((x) => [key(x), x]));
+  const assigned = new Set();
+  out.brands.forEach((x) => x.ids.forEach((i) => assigned.add(i)));
+  const un = new Set((b.unassigned || []).map(Number));
+  for (const sb of BRANDS_SEED.brands) {
+    const fresh = sb.ids.filter((i) => !assigned.has(i));
+    if (!fresh.length) continue;
+    let t = byKey.get(key(sb));
+    if (!t) {
+      t = { en: sb.en, ar: sb.ar, logo: '', hidden: false, ids: [] };
+      out.brands.push(t);
+      byKey.set(key(sb), t);
+    }
+    fresh.forEach((i) => { t.ids.push(i); assigned.add(i); un.delete(i); });
+  }
+  out.unassigned = [...un];
+  // الماركات العالمية المعروفة أولًا، والباقي بنفس ترتيبه
+  const pri = BRANDS_SEED.priority || [];
+  const rank = (x) => { const k = pri.indexOf(key(x)); return k < 0 ? 9999 : k; };
+  out.brands = out.brands.map((x, i) => [x, i]).sort((p, q) => rank(p[0]) - rank(q[0]) || p[1] - q[1]).map((p) => p[0]);
+  return out;
 }
 
 function cleanBrands(b) {
@@ -133,7 +167,7 @@ function cleanBrands(b) {
   const brands = (Array.isArray(b.brands) ? b.brands : []).slice(0, 400).map((x) => ({
     en: str(x.en, 40), ar: str(x.ar, 40), logo: str(x.logo, 600), hidden: !!x.hidden, ids: ids(x.ids),
   })).filter((x) => x.en || x.ar);
-  return { brands, unassigned: ids(b.unassigned) };
+  return { v: SEED_V, brands, unassigned: ids(b.unassigned) };
 }
 
 async function saveBrands(req, env) {
