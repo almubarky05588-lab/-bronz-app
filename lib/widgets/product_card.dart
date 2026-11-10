@@ -257,11 +257,37 @@ class _QuickAdd extends StatelessWidget {
       child: Container(
         width: 34,
         height: 34,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: enabled ? BronzColors.ink : const Color(0xFFD6D6D3),
           shape: BoxShape.circle,
         ),
-        child: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold), size: 18, color: Colors.white),
+        // علامة + مرسومة بخطين (متمركزة تمامًا — أيقونة الخط كانت مزاحة لليسار)
+        child: const _PlusMark(size: 14, thickness: 2.4, color: Colors.white),
+      ),
+    );
+  }
+}
+
+/// علامة + متمركزة بدقة (خطان متعامدان) بدل أيقونة الخط.
+class _PlusMark extends StatelessWidget {
+  final double size;
+  final double thickness;
+  final Color color;
+  const _PlusMark({required this.size, required this.thickness, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final bar = BorderRadius.circular(thickness);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(width: size, height: thickness, decoration: BoxDecoration(color: color, borderRadius: bar)),
+          Container(width: thickness, height: size, decoration: BoxDecoration(color: color, borderRadius: bar)),
+        ],
       ),
     );
   }
