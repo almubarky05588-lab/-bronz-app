@@ -143,6 +143,27 @@ class HomeBlock {
       );
 }
 
+/// ماركة: الاسم بالإنجليزي (يظهر كشعار نصي) والعربي، وشعار اختياري، وأرقام منتجاتها.
+class BrandInfo {
+  final String en;
+  final String ar;
+  final String logo;
+  final List<int> ids;
+  const BrandInfo({required this.en, required this.ar, this.logo = '', this.ids = const []});
+
+  factory BrandInfo.fromJson(Map m) => BrandInfo(
+        en: '${m['en'] ?? ''}'.trim(),
+        ar: '${m['ar'] ?? ''}'.trim(),
+        logo: '${m['logo'] ?? ''}'.trim(),
+        ids: (m['ids'] is List ? m['ids'] as List : const [])
+            .map((e) => int.tryParse('$e'))
+            .whereType<int>()
+            .toList(),
+      );
+
+  String get title => ar.isNotEmpty ? ar : en;
+}
+
 class PopupConfig {
   final bool active;
   final String id;
@@ -183,7 +204,8 @@ class PopupConfig {
 class AppConfig {
   final List<HomeBlock> blocks;
   final PopupConfig? popup;
-  const AppConfig({required this.blocks, this.popup});
+  final List<BrandInfo> brands;
+  const AppConfig({required this.blocks, this.popup, this.brands = const []});
 
   factory AppConfig.fromJson(Map<String, dynamic> m) => AppConfig(
         blocks: (m['blocks'] is List ? m['blocks'] as List : const [])
@@ -192,6 +214,11 @@ class AppConfig {
             .where((b) => const {'hero', 'banners', 'features', 'circles', 'products', 'installments'}.contains(b.type))
             .toList(),
         popup: m['popup'] is Map ? PopupConfig.fromJson(m['popup'] as Map) : null,
+        brands: (m['brands'] is List ? m['brands'] as List : const [])
+            .whereType<Map>()
+            .map(BrandInfo.fromJson)
+            .where((b) => b.ids.isNotEmpty && (b.en.isNotEmpty || b.ar.isNotEmpty))
+            .toList(),
       );
 }
 
