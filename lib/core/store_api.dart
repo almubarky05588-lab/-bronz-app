@@ -3,6 +3,7 @@ import 'product.dart';
 import 'push.dart';
 import 'store_bridge.dart';
 import 'util.dart';
+import '../widgets/banner_carousel.dart' show resolveStoreLink;
 
 /// نتيجة التحقق من رمز الدخول.
 enum VerifyResult { authenticated, newCustomer }
@@ -85,70 +86,23 @@ class StoreApi {
         () => _b.get('products?source=latest&sort=$sort${page > 1 ? '&page=$page' : ''}'),
       );
 
-  /// هل القائمة هي نفسها «وصل حديثًا»؟ (سلة تتجاهل الترتيب أحيانًا وترجع الأحدث)
-  static Future<bool> _sameAsLatest(List<Product> l) async {
-    if (l.isEmpty) return false;
-    try {
-      final fresh = await latest();
-      final n = l.length < 6 ? l.length : 6;
-      if (fresh.length < n) return false;
-      for (var i = 0; i < n; i++) {
-        if (fresh[i].id != l[i].id) return false;
-      }
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// «الأكثر مبيعًا» — قائمة مختارة يدويًا بالترتيب (رقم المنتج في سلة).
-  /// لتعديلها: غيّر الأرقام هنا.
-  static const featuredIds = <int>[
-    729976151, // فيراري ايسنس
-    // ايفن
-    1622566670, 1816822432, 900640946, 266544262, 1820438499, 1012232434,
-    // ارماف كلوب دي نوي
-    50146272, 1171656101, 1490244479, 1289708302, 1449373818,
-    // هوس — الرصاصي
-    1333357884, 1010722460,
-    // سير فرانسيس
-    1996180, 1877815053, 458801895, 243240173,
-  ];
-
-  static Future<List<Product>>? _featured;
-
+  /// الأكثر مبيعًا.
   static Future<List<Product>> bestSellers({int page = 1}) async {
-    if (page > 1) return const [];
-    final l = await (_featured ??= _loadFeatured());
-    if (l.isEmpty) _featured = null; // نعيد المحاولة المرة الجاية
-    return l;
-  }
-
-  /// يجيب المنتجات المختارة على دفعات صغيرة ويحافظ على ترتيبها،
-  /// ويتخطى أي منتج محذوف أو فشل تحميله.
-  static Future<List<Product>> _loadFeatured() async {
-    final out = <Product>[];
-    for (var i = 0; i < featuredIds.length; i += 6) {
-      final batch = featuredIds.skip(i).take(6);
-      final res = await Future.wait(batch.map((id) async {
-        try {
-          final p = await details(id);
-          return (p.id != 0 && p.image.isNotEmpty) ? p : null;
-        } catch (_) {
-          return null;
-        }
-      }));
-      out.addAll(res.whereType<Product>());
+    try {
+      final l = await _sorted('bestSell', page);
+      if (l.isNotEmpty || page > 1) return l;
+    } catch (_) {}
+    try {
+      return await _list('sales', page: page);
+    } catch (_) {
+      return const [];
     }
-    return out;
   }
 
-  /// الأعلى تقييمًا — بنفس الحماية من التكرار.
+  /// الأعلى تقييمًا.
   static Future<List<Product>> topRated({int page = 1}) async {
     try {
-      final l = await _sorted('topRated', page);
-      if (page == 1 && await _sameAsLatest(l)) return const [];
-      return l;
+      return await _sorted('topRated', page);
     } catch (_) {
       return const [];
     }
@@ -180,6 +134,45 @@ class StoreApi {
 
   static Future<List<Product>> offers({int page = 1}) => _list('offers', page: page);
 
+  static final _linkIds = <String, int>{};
+
+  /// رقم المنتج من رابطه (الكامل أو المختصر) — المختصر يُقرأ من صفحة المنتج.
+  static Future<int?> idFromLink(String link) async {
+    final l = link.trim();
+    if (l.isEmpty) return null;
+    final known = _linkIds[l];
+    if (known != null) return known;
+    int? id = int.tryParse(l) ?? int.tryParse(RegExp(r'/p(\d+)(?:$|[/?#])').firstMatch(l)?.group(1) ?? '');
+    if (id == null && l.startsWith('http')) {
+      final full = await resolveStoreLink(l);
+      id = int.tryParse(RegExp(r'/p(\d+)(?:$|[/?#])').firstMatch(full ?? '')?.group(1) ?? '');
+    }
+    if (id != null) _linkIds[l] = id;
+    return id;
+  }
+
+  /// منتجات مختارة بروابطها، بنفس ترتيب الروابط.
+  static Future<List<Product>> byLinks(List<String> links) async {
+    final ids = <int>[];
+    for (final id in await Future.wait(links.map(idFromLink))) {
+      if (id != null && !ids.contains(id)) ids.add(id);
+    }
+    if (ids.isEmpty) return const [];
+    var found = <Product>[];
+    try {
+      found = await _page('selected|${ids.join(',')}', 1, () => _b.call('products', {'source': 'selected', 'value': ids}));
+    } catch (_) {}
+    final byId = {for (final p in found) p.id: p};
+    // اللي ما رجع من القائمة نجيبه بالتفاصيل
+    for (final id in ids.where((i) => !byId.containsKey(i))) {
+      try {
+        final p = await details(id);
+        if (p.id != 0) byId[id] = p;
+      } catch (_) {}
+    }
+    return [for (final id in ids) if (byId[id] != null) byId[id]!];
+  }
+
   /// التفاصيل الكاملة: الوصف، كل الصور، الماركة، التقييم، التصنيف.
   static Future<Product> details(int id) async {
     final res = await _b.call('details', {'id': id});
@@ -209,40 +202,19 @@ class StoreApi {
   }
 
   static final _covers = <int, Future<String>>{};
-  static final _usedCovers = <String>{};
-  static Future<void> _coverChain = Future.value();
 
-  /// صورة غلاف القسم: أول منتج فيه لم تُستخدم صورته غلافًا لقسم آخر،
-  /// حتى لا تتكرر نفس الصورة في رجالي ونسائي وللجنسين.
-  /// الأقسام تُحسب بالترتيب (سلسلة) ليكون الاختيار ثابتًا.
-  static Future<String> categoryCover(int id) => _covers.putIfAbsent(id, () {
-        final f = _coverChain.then((_) => _pickCover(id));
-        _coverChain = f.then((_) {}, onError: (_) {});
-        return f;
+  /// صورة غلاف القسم: صورة أول منتج فيه.
+  static Future<String> categoryCover(int id) => _covers.putIfAbsent(id, () async {
+        try {
+          final list = await byCategory(id);
+          for (final p in list) {
+            if (p.image.isNotEmpty) return p.image;
+          }
+        } catch (_) {
+          _covers.remove(id);
+        }
+        return '';
       });
-
-  static const _unisexIds = {886820816, 1783479303};
-
-  static Future<String> _pickCover(int id) async {
-    try {
-      final list = (await byCategory(id)).where((p) => p.image.isNotEmpty).toList();
-      if (list.isEmpty) return '';
-      final unisexCat = _unisexIds.contains(id);
-      bool fits(Product p) => unisexCat || !p.name.contains('للجنسين');
-      final pick = list.firstWhere(
-        (p) => !_usedCovers.contains(p.image) && fits(p),
-        orElse: () => list.firstWhere(
-          (p) => !_usedCovers.contains(p.image),
-          orElse: () => list.first,
-        ),
-      );
-      _usedCovers.add(pick.image);
-      return pick.image;
-    } catch (_) {
-      _covers.remove(id);
-      return '';
-    }
-  }
 
   // ───────── حساب العميل ─────────
 
