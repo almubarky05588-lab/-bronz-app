@@ -90,7 +90,7 @@ textarea{resize:none;min-height:86px;line-height:1.6}
 .sheetBox{background:#fff;width:100%;max-width:540px;margin:0 auto;border-radius:24px 24px 0 0;padding:20px 16px max(18px,env(safe-area-inset-bottom))}
 .sheetBox .h{margin-bottom:6px;text-align:center}
 .br{display:flex;align-items:center;gap:10px}
-.blogo{flex:none;width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line);background:#fff center/72% no-repeat;display:grid;place-items:center;font-size:9px;font-weight:800;text-align:center;line-height:1.1;padding:4px;overflow:hidden;cursor:pointer;direction:ltr}
+.blogo{flex:none;width:80px;height:48px;border-radius:12px;border:1.5px solid var(--line);background:#fff center/cover no-repeat;display:grid;place-items:center;font-size:9px;font-weight:800;text-align:center;line-height:1.1;padding:4px;overflow:hidden;cursor:pointer;direction:ltr}
 .br .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .br .nm input{padding:8px 10px;font-size:14px;border-radius:10px}
 .cnt{font-size:12px;color:var(--mute)}
@@ -763,11 +763,12 @@ function processLogo(file) {
         var c2 = Math.round(255 * (1 - v2)); out.data[o] = c2; out.data[o + 1] = c2; out.data[o + 2] = c2; out.data[o + 3] = 255;
       }
       tg.putImageData(out, 0, 0);
-      var S = 600, box = S * 0.72, sc = Math.min(box / cw, box / ch);
-      var fin = document.createElement('canvas'); fin.width = S; fin.height = S;
-      var fg = fin.getContext('2d'); fg.fillStyle = '#fff'; fg.fillRect(0, 0, S, S);
+      // لوحة عريضة (5:3) بنفس شكل بطاقة الماركة في التطبيق
+      var W = 1000, H = 600, sc = Math.min(W * 0.84 / cw, H * 0.7 / ch);
+      var fin = document.createElement('canvas'); fin.width = W; fin.height = H;
+      var fg = fin.getContext('2d'); fg.fillStyle = '#fff'; fg.fillRect(0, 0, W, H);
       fg.imageSmoothingQuality = 'high';
-      fg.drawImage(tmp, (S - cw * sc) / 2, (S - ch * sc) / 2, cw * sc, ch * sc);
+      fg.drawImage(tmp, (W - cw * sc) / 2, (H - ch * sc) / 2, cw * sc, ch * sc);
       fin.toBlob(function (bl) { bl ? ok(bl) : bad(new Error('تعذّر تجهيز الشعار')); }, 'image/png');
     };
     img.onerror = function () { bad(new Error('الصورة غير مدعومة')); };
