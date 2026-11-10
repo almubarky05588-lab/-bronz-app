@@ -101,21 +101,46 @@ class StoreApi {
     }
   }
 
-  /// الأكثر مبيعًا — ولو رجعت سلة نفس «وصل حديثًا» نرجع قائمة فاضية
-  /// فيختفي القسم بدل ما يتكرر.
+  /// «الأكثر مبيعًا» — قائمة مختارة يدويًا بالترتيب (رقم المنتج في سلة).
+  /// لتعديلها: غيّر الأرقام هنا.
+  static const featuredIds = <int>[
+    729976151, // فيراري ايسنس
+    // ايفن
+    1622566670, 1816822432, 900640946, 266544262, 1820438499, 1012232434,
+    // ارماف كلوب دي نوي
+    50146272, 1171656101, 1490244479, 1289708302, 1449373818,
+    // هوس — الرصاصي
+    1333357884, 1010722460,
+    // سير فرانسيس
+    1996180, 1877815053, 458801895, 243240173,
+  ];
+
+  static Future<List<Product>>? _featured;
+
   static Future<List<Product>> bestSellers({int page = 1}) async {
-    for (final load in <Future<List<Product>> Function()>[
-      () => _list('sales', page: page),
-      () => _sorted('bestSell', page),
-    ]) {
-      try {
-        final l = await load();
-        if (l.isEmpty) continue;
-        if (page == 1 && await _sameAsLatest(l)) continue;
-        return l;
-      } catch (_) {}
+    if (page > 1) return const [];
+    final l = await (_featured ??= _loadFeatured());
+    if (l.isEmpty) _featured = null; // نعيد المحاولة المرة الجاية
+    return l;
+  }
+
+  /// يجيب المنتجات المختارة على دفعات صغيرة ويحافظ على ترتيبها،
+  /// ويتخطى أي منتج محذوف أو فشل تحميله.
+  static Future<List<Product>> _loadFeatured() async {
+    final out = <Product>[];
+    for (var i = 0; i < featuredIds.length; i += 6) {
+      final batch = featuredIds.skip(i).take(6);
+      final res = await Future.wait(batch.map((id) async {
+        try {
+          final p = await details(id);
+          return (p.id != 0 && p.image.isNotEmpty) ? p : null;
+        } catch (_) {
+          return null;
+        }
+      }));
+      out.addAll(res.whereType<Product>());
     }
-    return const [];
+    return out;
   }
 
   /// الأعلى تقييمًا — بنفس الحماية من التكرار.
