@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'demo.dart';
@@ -26,10 +27,19 @@ class StoreBridge {
   final _pending = <String, Completer<dynamic>>{};
   bool _ready = false;
   bool _failed = false;
+  bool _healed = false;
   int _seq = 0;
 
+  /// يتغيّر مع كل إصلاح للكاش: أول تشغيل للإصدار يمسح نسخ صفحات المتجر المحفوظة.
+  static const _cacheKey = 'bridge_cache_version';
+  static const _cacheVersion = '2026-11-12';
+
+  /// رابط المتجر برقم متغيّر — يجبر المتصفح الداخلي يجيب الصفحة جديدة
+  /// بدل نسخة محفوظة قديمة (مثل صفحة «المتجر مغلق» وقت انتهاء الاشتراك).
+  static Uri _freshUri() => Uri.parse('$storeUrl?app=${DateTime.now().millisecondsSinceEpoch}');
+
   WebViewController _build() {
-    return WebViewController()
+    final c = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('BronzBridge', onMessageReceived: _onMessage)
       ..setNavigationDelegate(NavigationDelegate(
@@ -48,14 +58,37 @@ class StoreBridge {
               : NavigationDecision.prevent;
         },
       ))
-      ..setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1')
-      ..loadRequest(Uri.parse(storeUrl));
+      ..setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
+    Future.microtask(_boot);
+    return c;
+  }
+
+  /// بدء التحميل: مرة وحدة لكل إصدار نمسح الكاش (الصفحات المحفوظة فقط —
+  /// تسجيل الدخول والكوكيز تبقى كما هي)، ثم نحمّل المتجر جديدًا.
+  Future<void> _boot() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (p.getString(_cacheKey) != _cacheVersion) {
+        await controller.clearCache();
+        await p.setString(_cacheKey, _cacheVersion);
+      }
+    } catch (_) {}
+    controller.loadRequest(_freshUri());
   }
 
   void reload() {
     _failed = false;
     _ready = false;
-    controller.loadRequest(Uri.parse(storeUrl));
+    controller.loadRequest(_freshUri());
+  }
+
+  /// إصلاح ذاتي: لو المتجر ما جهز — نمسح الكاش ونعيد التحميل (مرة واحدة).
+  Future<void> _heal() async {
+    _healed = true;
+    try {
+      await controller.clearCache();
+    } catch (_) {}
+    reload();
   }
 
   /// مهلة انتظار جاهزية المتجر: أطول في وضع تصوير المتجر (المحاكي بطيء جدًا).
@@ -65,9 +98,16 @@ class StoreBridge {
     seconds ??= readySeconds;
     controller; // يضمن بدء التحميل
     if (_failed) reload();
-    final start = DateTime.now();
+    var start = DateTime.now();
     while (!_ready) {
-      if (_failed || DateTime.now().difference(start).inSeconds > seconds) {
+      final waited = DateTime.now().difference(start).inSeconds;
+      // ما جهز خلال 15 ثانية (أو فشل): نمسح الكاش ونعيد المحاولة مرة قبل ما نستسلم
+      if (!_healed && (_failed || waited > 15)) {
+        await _heal();
+        start = DateTime.now();
+        continue;
+      }
+      if (_failed || waited > seconds) {
         throw StoreError('تعذّر الاتصال بالمتجر، تحقق من الإنترنت');
       }
       await Future.delayed(const Duration(milliseconds: 150));
