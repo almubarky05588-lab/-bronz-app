@@ -324,13 +324,13 @@ class _BrandsRow extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 70,
+          height: 80,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: brands.length > 24 ? 24 : brands.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, i) => BrandBadge(brand: brands[i], width: 112, height: 70),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => BrandBadge(brand: brands[i], size: 76),
           ),
         ),
       ],
@@ -338,12 +338,11 @@ class _BrandsRow extends StatelessWidget {
   }
 }
 
-/// بطاقة الماركة (مستطيلة بزوايا ناعمة — تناسب الشعارات العريضة): الشعار أو الاسم.
+/// دائرة الماركة: الشعار (من اللوحة) أو اسم الماركة بخط صغير.
 class BrandBadge extends StatelessWidget {
   final BrandInfo brand;
-  final double width;
-  final double height;
-  const BrandBadge({super.key, required this.brand, this.width = 112, this.height = 70});
+  final double size;
+  const BrandBadge({super.key, required this.brand, this.size = 76});
 
   @override
   Widget build(BuildContext context) {
@@ -351,49 +350,56 @@ class BrandBadge extends StatelessWidget {
     return Pressable(
       onTap: () => openBrand(context, brand),
       child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
         // الإطار فوق المحتوى حتى لا تغطيه صورة الشعار
         foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          shape: BoxShape.circle,
           border: Border.all(color: BronzColors.line, width: 1.2),
         ),
         clipBehavior: Clip.antiAlias,
         alignment: Alignment.center,
         child: brand.logo.isNotEmpty
-            // الشعار مجهّز من اللوحة (أسود على أبيض) — يعبّي البطاقة بدون تشويه
-            ? CachedNetworkImage(
-                imageUrl: brand.logo,
-                width: width,
-                height: height,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 150),
-                errorWidget: (_, __, ___) => _BrandName(name: name, latin: brand.en.isNotEmpty),
+            ? Padding(
+                padding: EdgeInsets.all(size * 0.1),
+                child: CachedNetworkImage(
+                  imageUrl: brand.logo,
+                  fit: BoxFit.contain,
+                  fadeInDuration: const Duration(milliseconds: 150),
+                  errorWidget: (_, __, ___) => _BrandName(name: name, latin: brand.en.isNotEmpty, size: size),
+                ),
               )
-            : _BrandName(name: name, latin: brand.en.isNotEmpty),
+            : _BrandName(name: name, latin: brand.en.isNotEmpty, size: size),
       ),
     );
   }
 }
 
-/// اسم الماركة بخط ثابت لكل البطاقات (سطرين كحد أقصى).
+/// اسم الماركة بخط صغير وثابت لكل الدوائر (سطرين كحد أقصى).
 class _BrandName extends StatelessWidget {
   final String name;
   final bool latin;
-  const _BrandName({required this.name, required this.latin});
+  final double size;
+  const _BrandName({required this.name, required this.latin, required this.size});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: EdgeInsets.symmetric(horizontal: size * 0.14),
       child: Text(
         name,
         textAlign: TextAlign.center,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         textDirection: latin ? TextDirection.ltr : TextDirection.rtl,
-        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, letterSpacing: 0.3, height: 1.2, color: BronzColors.ink),
+        style: TextStyle(
+          fontSize: size * 0.12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+          height: 1.2,
+          color: BronzColors.ink,
+        ),
       ),
     );
   }
@@ -414,14 +420,12 @@ class BrandsScreen extends StatelessWidget {
           crossAxisCount: 3,
           mainAxisSpacing: 14,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.05,
+          childAspectRatio: 0.82,
         ),
         itemCount: brands.length,
         itemBuilder: (context, i) => Column(
           children: [
-            LayoutBuilder(
-              builder: (context, c) => BrandBadge(brand: brands[i], width: c.maxWidth, height: c.maxWidth * 0.62),
-            ),
+            BrandBadge(brand: brands[i], size: 86),
             const SizedBox(height: 6),
             Text(
               brands[i].ar.isNotEmpty ? brands[i].ar : brands[i].en,
