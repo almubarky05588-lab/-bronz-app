@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/theme.dart';
 
@@ -205,27 +204,33 @@ class _BronzSplashState extends State<_BronzSplash> with SingleTickerProviderSta
   // مركز حرف O داخل الشعار (من رسم الشعار 1264×440) — نقطة الغمزة
   static const _oCenter = Alignment(593 / 1264 * 2 - 1, 287.5 / 440 * 2 - 1);
 
+  final AudioPlayer _player = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
+    _prepareTing();
     _ting = Timer(const Duration(milliseconds: 2250), _playTing);
   }
 
-  /// صوت «تِن» مع الغمزة — مرة وحدة في اليوم، ويحترم وضع الصامت ولا يوقف موسيقى العميل.
-  Future<void> _playTing() async {
+  /// نجهّز الصوت من البداية عشان يطلع بالضبط مع الغمزة بدون تأخير التحميل.
+  /// ambient: يحترم وضع الصامت ولا يوقف موسيقى العميل.
+  Future<void> _prepareTing() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final today = '${now.year}-${now.month}-${now.day}';
-      if (prefs.getString('splash_ting_day') == today) return;
-      await prefs.setString('splash_ting_day', today);
-      final player = AudioPlayer();
-      await player.setAudioContext(AudioContext(
+      await _player.setAudioContext(AudioContext(
         iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
         android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
       ));
-      await player.play(AssetSource('sounds/ting.m4a'), volume: 0.7);
-      player.onPlayerComplete.first.then((_) => player.dispose());
+      await _player.setReleaseMode(ReleaseMode.stop);
+      await _player.setVolume(0.8);
+      await _player.setSource(AssetSource('sounds/ting.m4a'));
+    } catch (_) {}
+  }
+
+  /// صوت «تِن» مع الغمزة — مع كل فتح للتطبيق (شاشة البداية ما تطلع إلا عند الفتح).
+  Future<void> _playTing() async {
+    try {
+      await _player.resume();
     } catch (_) {
       // الصوت إضافة جمالية — أي خطأ فيه ما يوقف التطبيق
     }
@@ -234,6 +239,8 @@ class _BronzSplashState extends State<_BronzSplash> with SingleTickerProviderSta
   @override
   void dispose() {
     _ting?.cancel();
+    // نخلي الصوت يكمل حتى لو انتقلنا للرئيسية، ثم نحرره
+    Future.delayed(const Duration(seconds: 2), _player.dispose);
     _c.dispose();
     super.dispose();
   }
