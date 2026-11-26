@@ -1,6 +1,7 @@
 New in this release:
-• A brand-new elegant splash screen
-• Shop by brand: every brand and its products in one place
-• A fully redesigned categories page
-• Faster, more reliable product loading
+• Scent finder: pick perfumes by scent (oud, floral, musk…) and by men, women or unisex
+• "Notify me when available": get a notification as soon as a product is back
+• A gentle reminder if you leave items in your cart
+• A new splash screen and refreshed icons
+• Shop by brand and a redesigned categories page
 • Interface and performance improvements

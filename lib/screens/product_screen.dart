@@ -3,9 +3,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../core/cart.dart';
 import '../core/product.dart';
+import '../core/stock_alerts.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../core/util.dart';
+import '../widgets/brand_icons.dart';
 import '../widgets/common.dart';
 import '../widgets/product_card.dart';
 import 'cart_screen.dart';
@@ -24,11 +26,53 @@ class _ProductScreenState extends State<ProductScreen> {
   int _image = 0;
   int _qty = 1;
   bool _justAdded = false;
+  bool _watching = false;
+  bool _watchBusy = false;
 
   @override
   void initState() {
     super.initState();
     _loadDetails();
+    StockAlerts.isWatching(_p.id).then((v) {
+      if (mounted && v) setState(() => _watching = true);
+    });
+  }
+
+  /// «أبلغني عند التوفّر»
+  Future<void> _notifyMe() async {
+    if (_watching || _watchBusy) return;
+    setState(() => _watchBusy = true);
+    final err = await StockAlerts.watch(_p.id, _p.name);
+    if (!mounted) return;
+    setState(() {
+      _watchBusy = false;
+      if (err == null) _watching = true;
+    });
+    showBronzToast(
+      context,
+      err ?? 'تم! بنرسل لك إشعار أول ما يتوفّر',
+      icon: err == null ? PhosphorIcons.bellRinging(PhosphorIconsStyle.fill) : PhosphorIcons.warningCircle(PhosphorIconsStyle.fill),
+    );
+  }
+
+  Widget _notifyButton() {
+    return FilledButton(
+      onPressed: _watching || _watchBusy ? null : _notifyMe,
+      style: FilledButton.styleFrom(
+        backgroundColor: BronzColors.ink,
+        disabledBackgroundColor: BronzColors.soft,
+        disabledForegroundColor: BronzColors.ink,
+      ),
+      child: _watchBusy
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!_watching) ...[const BIcon(BrandIcons.bellPlus, size: 22), const SizedBox(width: 8)],
+                Text(_watching ? 'بنبلغك أول ما يتوفّر ✓' : 'نفدت الكمية · أبلغني عند التوفّر'),
+              ],
+            ),
+    );
   }
 
   Future<void> _loadDetails() async {
@@ -93,7 +137,7 @@ class _ProductScreenState extends State<ProductScreen> {
                   start: 20,
                   child: GestureDetector(
                     onTap: () => Navigator.of(context).maybePop(),
-                    child: _floating(Icon(PhosphorIcons.caretRight(), size: 20, color: BronzColors.ink)),
+                    child: _floating(const BIcon(BrandIcons.back, size: 22)),
                   ),
                 ),
                 PositionedDirectional(
@@ -110,7 +154,7 @@ class _ProductScreenState extends State<ProductScreen> {
                           label: Text('${Cart.instance.count}'),
                           child: GestureDetector(
                             onTap: _openCart,
-                            child: _floating(Icon(PhosphorIcons.handbag(), size: 20, color: BronzColors.ink)),
+                            child: _floating(const BIcon(BrandIcons.bag, size: 24)),
                           ),
                         ),
                       ),
@@ -204,9 +248,9 @@ class _ProductScreenState extends State<ProductScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _Perk(PhosphorIcons.sealCheck(), 'أصلي 100%')),
-                    Expanded(child: _Perk(PhosphorIcons.truck(), 'شحن سريع')),
-                    Expanded(child: _Perk(PhosphorIcons.lock(), 'دفع آمن')),
+                    Expanded(child: _Perk(BrandIcons.original, 'أصلي 100%')),
+                    Expanded(child: _Perk(BrandIcons.truck, 'شحن سريع')),
+                    Expanded(child: _Perk(BrandIcons.lock, 'دفع آمن')),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -250,7 +294,7 @@ class _ProductScreenState extends State<ProductScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
             child: Row(
-              children: [
+              children: _p.available ? [
                 QtyStepper(value: _qty, onChanged: (v) => setState(() => _qty = v)),
                 const SizedBox(width: 14),
                 Expanded(
@@ -277,7 +321,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     ),
                   ),
                 ),
-              ],
+              ] : [Expanded(child: _notifyButton())],
             ),
           ),
         ),
@@ -287,7 +331,7 @@ class _ProductScreenState extends State<ProductScreen> {
 }
 
 class _Perk extends StatelessWidget {
-  final IconData icon;
+  final String icon;
   final String label;
   const _Perk(this.icon, this.label);
 
@@ -295,7 +339,7 @@ class _Perk extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 22, color: BronzColors.ink),
+        BIcon(icon, size: 28),
         const SizedBox(height: 6),
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
       ],

@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../widgets/category_cover.dart';
 import '../widgets/motion.dart';
 import 'category_screen.dart';
+import 'scent_finder_screen.dart';
 import 'search_screen.dart';
 
 /// لون خاص لكل قسم (خلفية البطاقة) — صور المنتجات تذوب فيه.
@@ -108,6 +109,13 @@ class CategoriesScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
+            // ─── دليل العطور
+            const SliverToBoxAdapter(
+              child: FadeSlideIn(
+                order: 2,
+                child: ScentFinderCard(margin: EdgeInsets.fromLTRB(20, 14, 20, 0)),
               ),
             ),
             // ─── الماركات (من لوحة برونز)

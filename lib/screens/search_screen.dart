@@ -5,6 +5,7 @@ import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/product_grid.dart';
+import 'scent_finder_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final bool autofocus;
@@ -64,6 +65,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ? ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                const ScentFinderCard(margin: EdgeInsets.only(bottom: 20)),
                 const Text('عمليات بحث شائعة',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 12),

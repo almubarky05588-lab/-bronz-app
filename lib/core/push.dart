@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../screens/cart_screen.dart';
 import '../screens/category_screen.dart';
 import '../screens/orders_screen.dart';
 import '../screens/product_screen.dart';
@@ -105,6 +106,10 @@ class Push {
           ),
         ),
       ));
+      return;
+    }
+    if (d['cart'] != null) {
+      nav.push(MaterialPageRoute(builder: (_) => const CartScreen()));
       return;
     }
     final product = n('product_id');

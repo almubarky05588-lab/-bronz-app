@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'brand_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -594,10 +595,11 @@ class EmptyView extends StatelessWidget {
 
 /// زر دائري أبيض بأيقونة (الإشعارات، الرجوع…)
 class RoundIcon extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? svg;
   final VoidCallback onTap;
   final double size;
-  const RoundIcon({super.key, required this.icon, required this.onTap, this.size = 42});
+  const RoundIcon({super.key, this.icon, this.svg, required this.onTap, this.size = 42});
 
   @override
   Widget build(BuildContext context) {
@@ -611,7 +613,9 @@ class RoundIcon extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: BronzColors.line),
         ),
-        child: Icon(icon, size: size * 0.46, color: BronzColors.ink),
+        child: svg != null
+            ? Center(child: BIcon(svg!, size: size * 0.56))
+            : Icon(icon, size: size * 0.46, color: BronzColors.ink),
       ),
     );
   }

@@ -155,6 +155,11 @@ textarea{resize:none;min-height:86px;line-height:1.6}
     </div>
     <button class="btn" id="send">إرسال الإشعار</button>
     <div id="res"></div>
+    <div class="card" style="margin-top:14px">
+      <div class="h">🤖 إشعارات تلقائية</div>
+      <p class="hint">تشتغل لحالها كل ساعة: تذكير لكل عميل ترك منتجات في السلة (بعد ساعة، مرة وحدة، وما ترسل بين 1 الفجر و8 الصبح) — وإشعار «رجع متوفّر» لكل عميل ضغط «أبلغني عند التوفّر».</p>
+      <div id="autoBox" class="hint">جاري التحميل…</div>
+    </div>
     <p class="hint" style="text-align:center;margin-top:14px"><button class="link" id="resetKey">تغيير مفتاح OneSignal</button></p>
   </div>
 </section>
@@ -274,7 +279,24 @@ document.querySelectorAll('#tabs button').forEach(function (b) {
 /* ───── الإشعارات ───── */
 var KEY = 'bronz_push_key';
 var sendState = { aud: 'all', open: 'home' };
-function showKey() { var has = !!LS.get(KEY); $('keyCard').classList.toggle('hide', has); $('sendForm').classList.toggle('hide', !has); }
+function showKey() { var has = !!LS.get(KEY); $('keyCard').classList.toggle('hide', has); $('sendForm').classList.toggle('hide', !has); if (has) syncKey(); }
+/* المفتاح يُحفظ في السيرفر عشان الإشعارات التلقائية تشتغل بدون ما تفتح اللوحة */
+function syncKey() {
+  fetch('/key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: LS.get(KEY) }) })
+    .catch(function () {}).then(loadAuto);
+}
+function loadAuto() {
+  fetch('/auto').then(function (r) { return r.json(); }).then(function (a) {
+    var box = $('autoBox'); box.innerHTML = '';
+    function line(t) { box.appendChild(el('div', '', t)); }
+    line(a.key ? '✅ شغّالة' : '⚠️ متوقفة — المفتاح غير محفوظ، أعد إدخال مفتاح OneSignal');
+    if (a.cart && a.cart.at) line('🛍️ آخر تذكير سلة: ' + new Date(a.cart.at).toLocaleString('ar-SA') + (a.cart.recipients != null ? ' — وصل لـ ' + a.cart.recipients : ''));
+    var w = a.watching || [];
+    line('🔔 منتجات ينتظرها العملاء: ' + (w.length ? '' : 'ما فيه'));
+    w.slice(0, 20).forEach(function (x) { line('• ' + (x.name || ('منتج ' + x.id)) + ' — ' + x.n + ' عميل'); });
+    if (a.stock && a.stock.sent) line('🎉 آخر تنبيه توفّر: ' + a.stock.sent.map(function (x) { return x.name; }).join('، '));
+  }).catch(function () { $('autoBox').textContent = 'تعذّر تحميل الحالة'; });
+}
 $('saveKey').onclick = function () { var k = $('keyIn').value.trim(); if (!k) return; LS.set(KEY, k); showKey(); };
 $('resetKey').onclick = function () { if (confirm('تبي تغيّر مفتاح OneSignal؟')) { LS.del(KEY); $('keyIn').value = ''; showKey(); } };
 var hints = {

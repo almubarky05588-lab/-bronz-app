@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'product.dart';
@@ -113,5 +116,30 @@ class Cart extends ChangeNotifier {
   void _changed() {
     notifyListeners();
     _save();
+    _syncTags();
+  }
+
+  Timer? _tagTimer;
+
+  /// وسوم السلة في OneSignal — منها تعرف «لوحة برونز» مين ترك سلته
+  /// فترسل له تذكير تلقائي بعد ساعة. السلة الفاضية تمسح الوسوم.
+  void _syncTags() {
+    _tagTimer?.cancel();
+    _tagTimer = Timer(const Duration(seconds: 3), () {
+      try {
+        final g = goods;
+        if (g.isEmpty) {
+          OneSignal.User.removeTags(const ['cart_at', 'cart_n', 'cart_item']);
+          return;
+        }
+        var name = g.first.name.trim();
+        if (name.length > 40) name = '${name.substring(0, 40)}…';
+        OneSignal.User.addTags({
+          'cart_at': '${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
+          'cart_n': '${g.fold<int>(0, (s, i) => s + i.qty)}',
+          'cart_item': name,
+        });
+      } catch (_) {}
+    });
   }
 }

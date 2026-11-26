@@ -9,6 +9,7 @@ import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../widgets/banner_carousel.dart';
 import '../widgets/category_cover.dart';
+import '../widgets/brand_icons.dart';
 import '../widgets/common.dart';
 import '../widgets/motion.dart';
 import '../widgets/product_rail.dart';
@@ -249,7 +250,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const Spacer(),
                     RoundIcon(
-                      icon: PhosphorIcons.bell(),
+                      svg: BrandIcons.bell,
                       onTap: () => showBronzToast(
                         context,
                         'لا توجد إشعارات جديدة',
@@ -279,7 +280,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(PhosphorIcons.magnifyingGlass(), size: 20, color: BronzColors.muted),
+                        const BIcon(BrandIcons.search, size: 22),
                         const SizedBox(width: 10),
                         const Text('ابحث عن عطر، ماركة أو منتج',
                             style: TextStyle(color: BronzColors.faint, fontSize: 14)),

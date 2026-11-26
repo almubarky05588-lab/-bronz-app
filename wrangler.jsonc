@@ -4,6 +4,8 @@
   "main": "push-panel/src/index.js",
   "compatibility_date": "2025-09-01",
   "workers_dev": true,
+  // كل ساعة: تذكير السلال المتروكة + تنبيهات «رجع متوفّر»
+  "triggers": { "crons": ["0 * * * *"] },
   "kv_namespaces": [
     { "binding": "CONFIG", "id": "89384df83a1c45bfb5268b718c175456" }
   ]

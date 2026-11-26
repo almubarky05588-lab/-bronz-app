@@ -68,13 +68,21 @@ export default {
       if (url.pathname.startsWith('/m/') && req.method === 'GET') return await media(env, url);
       if (url.pathname === '/meta' && req.method === 'GET') return json({ cats: CATS });
       if (url.pathname === '/og' && req.method === 'GET') return await ogImage(url);
-      if (url.pathname === '/send' && req.method === 'POST') return await send(req);
+      if (url.pathname === '/send' && req.method === 'POST') return await send(req, env);
+      if (url.pathname === '/key' && req.method === 'POST') return await saveKey(req, env);
+      if (url.pathname === '/watch' && req.method === 'POST') return await watch(req, env);
+      if (url.pathname === '/auto' && req.method === 'GET') return await autoStatus(env);
     } catch (e) {
       return json({ error: String(e) }, 500);
     }
     return new Response(PAGE, {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
     });
+  },
+
+  // كل ساعة: تذكير السلال المتروكة + فحص المنتجات اللي طلب العملاء التنبيه عند توفّرها
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(Promise.allSettled([cartReminders(env, event.scheduledTime), stockCheck(env)]));
   },
 };
 
@@ -411,7 +419,7 @@ async function ogImage(url) {
 
 // ───────── الإشعارات ─────────
 
-async function send(req) {
+async function send(req, env) {
   const key = (req.headers.get('x-key') || '').trim().replace(/^Key\s+/i, '');
   if (!key) return json({ error: 'المفتاح مفقود' }, 401);
 
@@ -452,6 +460,8 @@ async function send(req) {
     body: JSON.stringify(msg),
   });
   const out = await r.json().catch(() => ({}));
+  // المفتاح شغّال؟ نحفظه للتذكيرات التلقائية
+  if (r.ok && env) await env.CONFIG.put('os_key', key);
   return json(out, r.status);
 }
 
@@ -460,4 +470,141 @@ function json(o, s = 200, extra = {}) {
     status: s,
     headers: { 'content-type': 'application/json; charset=utf-8', ...CORS, ...extra },
   });
+}
+
+
+// ───────── التذكيرات التلقائية ─────────
+
+const STORE_ID = '320693818';
+
+async function osKey(env) {
+  return (await env.CONFIG.get('os_key')) || '';
+}
+
+/** يحفظ مفتاح OneSignal (من اللوحة) بعد التأكد إنه صحيح. */
+async function saveKey(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const key = String(b.key || '').trim().replace(/^Key\s+/i, '');
+  if (!key) return json({ error: 'المفتاح مفقود' }, 400);
+  if ((await osKey(env)) === key) return json({ ok: true });
+  const r = await fetch('https://api.onesignal.com/notifications?app_id=' + APP_ID + '&limit=1', {
+    headers: { Authorization: 'Key ' + key },
+  });
+  if (!r.ok) return json({ error: 'المفتاح غير صحيح' }, 401);
+  await env.CONFIG.put('os_key', key);
+  return json({ ok: true });
+}
+
+async function osSend(key, msg) {
+  const r = await fetch('https://api.onesignal.com/notifications?c=push', {
+    method: 'POST',
+    headers: { Authorization: 'Key ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: APP_ID, target_channel: 'push', ...msg }),
+  });
+  return { status: r.status, out: await r.json().catch(() => ({})) };
+}
+
+/** السلال المتروكة: كل عميل غيّر سلته قبل 1–2 ساعة وما طلب، يوصله تذكير واحد.
+ *  ما نرسل بين 1 الفجر و8 الصبح (بتوقيت الرياض) — أول دفعة الساعة 9 تغطي الليل. */
+async function cartReminders(env, when) {
+  const key = await osKey(env);
+  if (!key) return;
+  const h = (new Date(when || Date.now()).getUTCHours() + 3) % 24;
+  if (h >= 1 && h <= 8) return;
+  const upTo = h === 9 ? 10 * 3600 : 2 * 3600;
+  const res = await osSend(key, {
+    filters: [
+      { field: 'tag', key: 'cart_at', relation: 'time_elapsed_gt', value: '3600' },
+      { field: 'tag', key: 'cart_at', relation: 'time_elapsed_lt', value: String(upTo) },
+      { field: 'tag', key: 'cart_n', relation: '>', value: '0' },
+    ],
+    headings: { en: 'سلتك تنتظرك 🛍️', ar: 'سلتك تنتظرك 🛍️' },
+    contents: {
+      en: "{{ cart_item | default: 'منتجاتك' }} لسا في السلة — كمّل طلبك قبل ما تخلص الكمية",
+      ar: "{{ cart_item | default: 'منتجاتك' }} لسا في السلة — كمّل طلبك قبل ما تخلص الكمية",
+    },
+    data: { cart: '1' },
+  });
+  await env.CONFIG.put('auto:cart', JSON.stringify({ at: Date.now(), status: res.status, recipients: res.out.recipients ?? null }));
+}
+
+/** العميل يطلب التنبيه عند توفّر منتج. */
+async function watch(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const id = String(b.id || '').replace(/\D/g, '');
+  const sub = String(b.sub || '').trim();
+  if (!id || !/^[0-9a-f-]{20,64}$/i.test(sub)) return json({ error: 'بيانات ناقصة' }, 400);
+  const w = await loadWatch(env);
+  const ids = Object.keys(w);
+  if (!w[id] && ids.length >= 500) return json({ error: 'القائمة ممتلئة' }, 429);
+  const e = w[id] || { name: '', subs: [], at: Date.now() };
+  e.name = str(b.name, 80) || e.name;
+  if (!e.subs.includes(sub)) e.subs.push(sub);
+  if (e.subs.length > 5000) e.subs = e.subs.slice(-5000);
+  e.at = Date.now();
+  w[id] = e;
+  await env.CONFIG.put('watch', JSON.stringify(w));
+  return json({ ok: true });
+}
+
+async function loadWatch(env) {
+  try { return JSON.parse((await env.CONFIG.get('watch')) || '{}') || {}; } catch { return {}; }
+}
+
+/** هل المنتج متوفّر الحين؟ (من واجهة متجر سلة) — null لو ما قدرنا نعرف. */
+async function isAvailable(id) {
+  try {
+    const r = await fetch('https://api.salla.dev/store/v1/products/' + id + '/details', {
+      headers: { 'Store-Identifier': STORE_ID, 'Accept-Language': 'ar', accept: 'application/json' },
+    });
+    if (!r.ok) return null;
+    const d = ((await r.json()) || {}).data || {};
+    if (typeof d.is_available === 'boolean') return d.is_available;
+    if (d.status) return d.status === 'sale';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function stockCheck(env) {
+  const w = await loadWatch(env);
+  const ids = Object.keys(w);
+  if (!ids.length) return;
+  const key = await osKey(env);
+  const now = Date.now();
+  let changed = false;
+  const log = [];
+  for (const id of ids) {
+    const e = w[id];
+    if (now - (e.at || 0) > 60 * 864e5) { delete w[id]; changed = true; continue; } // أقدم من شهرين
+    if (!key) continue;
+    if ((await isAvailable(id)) !== true) continue;
+    const name = e.name || 'المنتج';
+    for (let i = 0; i < e.subs.length; i += 2000) {
+      await osSend(key, {
+        include_subscription_ids: e.subs.slice(i, i + 2000),
+        headings: { en: 'رجع متوفّر 🎉', ar: 'رجع متوفّر 🎉' },
+        contents: { en: name + ' صار متوفّر الحين — الحق عليه قبل ما يخلص', ar: name + ' صار متوفّر الحين — الحق عليه قبل ما يخلص' },
+        data: { product_id: id },
+      });
+    }
+    log.push({ id, name, n: e.subs.length });
+    delete w[id];
+    changed = true;
+  }
+  if (changed) await env.CONFIG.put('watch', JSON.stringify(w));
+  if (log.length) await env.CONFIG.put('auto:stock', JSON.stringify({ at: now, sent: log }));
+}
+
+/** حالة التذكيرات التلقائية للوحة. */
+async function autoStatus(env) {
+  const w = await loadWatch(env);
+  const parse = async (k) => { try { return JSON.parse((await env.CONFIG.get(k)) || 'null'); } catch { return null; } };
+  return json({
+    key: !!(await osKey(env)),
+    watching: Object.entries(w).map(([id, e]) => ({ id, name: e.name, n: e.subs.length })),
+    cart: await parse('auto:cart'),
+    stock: await parse('auto:stock'),
+  }, 200, { 'cache-control': 'no-store' });
 }
