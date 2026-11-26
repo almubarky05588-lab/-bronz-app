@@ -82,7 +82,9 @@ platform :ios do
       ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
       metadata_path: "./fastlane/metadata",
       screenshots_path: "./fastlane/screenshots",
-      overwrite_screenshots: true,
+      # SKIP_SHOTS=1: التصوير فشل — نخلي صور النسخة السابقة في المتجر زي ما هي
+      skip_screenshots: ENV["SKIP_SHOTS"] == "1",
+      overwrite_screenshots: ENV["SKIP_SHOTS"] != "1",
       submit_for_review: true,
       automatic_release: true,
       force: true,

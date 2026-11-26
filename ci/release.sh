@@ -7,7 +7,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 bash ci/ios_prepare.sh "${1:-1}"
-bash ci/screenshots.sh
+# لو التصوير فشل (مثلًا المتجر ما فتح في المحاكي) نكمل الرفع بصور المتجر الحالية بدل ما يتوقف كل شي
+if bash ci/screenshots.sh; then
+  export SKIP_SHOTS=0
+else
+  echo "⚠️ التصوير ما نجح — نرفع النسخة بصور App Store الحالية"
+  export SKIP_SHOTS=1
+fi
 
 echo "▶ إرجاع إعدادات البناء للنسخة النهائية (بدون وضع التصوير)"
 flutter build ios --release --config-only --no-codesign
