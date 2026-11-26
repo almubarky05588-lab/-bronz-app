@@ -141,10 +141,10 @@ async function loadBrands(env) {
     b = mergeSeed(b);
     await env.CONFIG.put('brands', JSON.stringify(b));
   }
-  // تصحيح لمرة وحدة: شعارات ديور وشانيل طلعت كبيرة ومختلفة — ترجع كتابة مثل باقي الماركات
-  if (b !== BRANDS_SEED && !b.fixLogos1) {
-    (b.brands || []).forEach((x) => { if (/^(DIOR|CHANEL)$/i.test(String(x.en || '').trim())) x.logo = ''; });
-    b.fixLogos1 = true;
+  // تصحيح لمرة وحدة: شعارات ديور وشانيل وتوم فورد طلعت كبيرة ومختلفة — ترجع كتابة مثل باقي الماركات
+  if (b !== BRANDS_SEED && !b.fixLogos2) {
+    (b.brands || []).forEach((x) => { if (/^(DIOR|CHANEL|TOM FORD)$/i.test(String(x.en || '').trim())) x.logo = ''; });
+    b.fixLogos2 = true;
     await env.CONFIG.put('brands', JSON.stringify(b));
   }
   return {
@@ -155,7 +155,7 @@ async function loadBrands(env) {
 }
 
 function mergeSeed(b) {
-  const out = { v: SEED_V, fixLogos1: !!b.fixLogos1, brands: b.brands.map((x) => ({ ...x, ids: (x.ids || []).map(Number) })) };
+  const out = { v: SEED_V, fixLogos2: !!b.fixLogos2, brands: b.brands.map((x) => ({ ...x, ids: (x.ids || []).map(Number) })) };
   const key = (x) => String(x.en || x.ar || '').trim().toUpperCase();
   const byKey = new Map(out.brands.map((x) => [key(x), x]));
   const assigned = new Set();
@@ -186,7 +186,7 @@ function cleanBrands(b) {
   const brands = (Array.isArray(b.brands) ? b.brands : []).slice(0, 400).map((x) => ({
     en: str(x.en, 40), ar: str(x.ar, 40), logo: str(x.logo, 600), hidden: !!x.hidden, ids: ids(x.ids),
   })).filter((x) => x.en || x.ar);
-  return { v: SEED_V, brands, unassigned: ids(b.unassigned), fixLogos1: true };
+  return { v: SEED_V, brands, unassigned: ids(b.unassigned), fixLogos2: true };
 }
 
 async function saveBrands(req, env) {
