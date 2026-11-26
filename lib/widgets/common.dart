@@ -276,7 +276,6 @@ class _BronzSplashState extends State<_BronzSplash> with SingleTickerProviderSta
         animation: _c,
         builder: (context, _) {
           final logoIn = _span(0, 700);
-          final lineIn = _span(300, 800);
           final tagIn = _span(350, 850);
           final wordsIn = _span(500, 900);
           final wink = 1 - 0.92 * _pulse(2250, 300); // O يغمض ويفتح
@@ -307,12 +306,7 @@ class _BronzSplashState extends State<_BronzSplash> with SingleTickerProviderSta
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Opacity(
-                    opacity: lineIn,
-                    child: Container(width: 40, height: 1.5, color: const Color(0xFFC9A35A)),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 26),
                   Opacity(
                     opacity: tagIn,
                     child: const Text(
