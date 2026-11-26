@@ -1,7 +1,7 @@
 name: bronz_app
 description: تطبيق متجر برونز — عطور ومكياج
 publish_to: "none"
-version: 1.0.8+1
+version: 1.0.9+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -19,6 +19,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   onesignal_flutter: ^5.2.0
   flutter_svg: ^2.0.17
+  audioplayers: ^6.1.0
   # طبقة أيقونات محلية (المكتبة الأصلية لا تتوافق مع Flutter الحالي)
   phosphor_flutter:
     path: packages/phosphor_flutter
@@ -34,6 +35,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/
+    - assets/sounds/
 
 # أيقونة التطبيق بكل المقاسات — تتولّد وقت البناء (iOS أولًا)
 flutter_launcher_icons:
@@ -46,7 +48,6 @@ flutter_launcher_icons:
 # الشاشة الافتتاحية الأصلية (تظهر لحظة فتح التطبيق قبل تشغيل Flutter)
 flutter_native_splash:
   color: "#FFFFFF"
-  background_image: "assets/branding/BRONZ_splash_graphite.png"
   ios: true
   android: false
   web: false

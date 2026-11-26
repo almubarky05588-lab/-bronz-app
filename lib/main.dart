@@ -107,7 +107,7 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
       // لو تأخر المتجر نكمل؛ الرئيسية تعرض حالة إعادة المحاولة بنفسها
     }
     final elapsed = DateTime.now().difference(started);
-    const minimum = Duration(milliseconds: 1400);
+    const minimum = splashMotion; // حركة شاشة الافتتاح تكمل للنهاية (مع الغمزة)
     if (elapsed < minimum) await Future.delayed(minimum - elapsed);
     if (!mounted) return;
     setState(() => _showSplash = false);

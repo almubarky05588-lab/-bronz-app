@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/theme.dart';
 
@@ -14,7 +16,7 @@ const splashAsset = 'assets/branding/BRONZ_splash_graphite.png';
 
 /// شاشة «الجمعة البيضاء» الافتتاحية — false يرجّع الشاشة العادية.
 /// الخلفية تتولّد وقت البناء (ci/make_bf_splash.py) والشريطان يرسمهم التطبيق متحركين.
-const kWhiteFriday = true;
+const kWhiteFriday = false;
 const splashWfAsset = 'assets/branding/BRONZ_splash_wf_bg.png';
 
 // ───────── التنبيه الأنيق ─────────
@@ -176,14 +178,166 @@ class BrandSplash extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (kWhiteFriday) return const _WhiteFridaySplash();
-    return Container(
+    return const _BronzSplash();
+  }
+}
+
+/// مدة حركة شاشة الافتتاح كاملة (main.dart ينتظرها قبل ما يدخل العميل).
+const splashMotion = Duration(milliseconds: 2700);
+
+/// شاشة الافتتاح البيضاء: الشعار يظهر بهدوء ← الخط الذهبي والعبارة ←
+/// «عطور · مكياج · عناية» تنبض وحدة ورا الثانية ← غمزة سريعة لحرف O مع صوت «تِن».
+class _BronzSplash extends StatefulWidget {
+  const _BronzSplash();
+
+  @override
+  State<_BronzSplash> createState() => _BronzSplashState();
+}
+
+class _BronzSplashState extends State<_BronzSplash> with SingleTickerProviderStateMixin {
+  static const _ms = 2700.0;
+  late final AnimationController _c = AnimationController(vsync: this, duration: splashMotion)..forward();
+  Timer? _ting;
+
+  // مركز حرف O داخل الشعار (من رسم الشعار 1264×440) — نقطة الغمزة
+  static const _oCenter = Alignment(593 / 1264 * 2 - 1, 287.5 / 440 * 2 - 1);
+
+  @override
+  void initState() {
+    super.initState();
+    _ting = Timer(const Duration(milliseconds: 2250), _playTing);
+  }
+
+  /// صوت «تِن» مع الغمزة — مرة وحدة في اليوم، ويحترم وضع الصامت ولا يوقف موسيقى العميل.
+  Future<void> _playTing() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month}-${now.day}';
+      if (prefs.getString('splash_ting_day') == today) return;
+      await prefs.setString('splash_ting_day', today);
+      final player = AudioPlayer();
+      await player.setAudioContext(AudioContext(
+        iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
+        android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+      ));
+      await player.play(AssetSource('sounds/ting.m4a'), volume: 0.7);
+      player.onPlayerComplete.first.then((_) => player.dispose());
+    } catch (_) {
+      // الصوت إضافة جمالية — أي خطأ فيه ما يوقف التطبيق
+    }
+  }
+
+  @override
+  void dispose() {
+    _ting?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  /// قيمة 0→1 بين لحظتين (بالملي ثانية) مع منحنى.
+  double _span(double from, double to, [Curve curve = Curves.easeOutCubic]) {
+    final t = ((_c.value * _ms - from) / (to - from)).clamp(0.0, 1.0);
+    return curve.transform(t);
+  }
+
+  /// نبضة: يكبر ثم يرجع (0 → 1 → 0).
+  double _pulse(double start, [double len = 500]) {
+    final t = ((_c.value * _ms - start) / len).clamp(0.0, 1.0);
+    return math.sin(t * math.pi);
+  }
+
+  Widget _word(String text, double start) {
+    final p = _pulse(start);
+    final done = _c.value * _ms >= start + 250;
+    final color = Color.lerp(done ? const Color(0xFF3A3A3A) : const Color(0xFF8A8A86), const Color(0xFFB8913F), p)!;
+    return Transform.scale(
+      scale: 1 + 0.3 * p,
+      child: Text(text, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
+
+  Widget _dot() => Container(
+        width: 4,
+        height: 4,
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: const BoxDecoration(color: Color(0xFFC9A35A), shape: BoxShape.circle),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    const logoW = 236.0;
+    return ColoredBox(
       color: Colors.white,
-      child: Image.asset(
-        splashAsset,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        gaplessPlayback: true,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final logoIn = _span(0, 700);
+          final lineIn = _span(300, 800);
+          final tagIn = _span(350, 850);
+          final wordsIn = _span(500, 900);
+          final wink = 1 - 0.92 * _pulse(2250, 300); // O يغمض ويفتح
+          return Center(
+            child: Transform.translate(
+              offset: const Offset(0, -40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Opacity(
+                    opacity: logoIn,
+                    child: Transform.scale(
+                      scale: 0.92 + 0.08 * logoIn,
+                      child: SizedBox(
+                        width: logoW,
+                        height: logoW * 440 / 1264,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            SvgPicture.asset('assets/branding/bronz_logo_base.svg'),
+                            Transform(
+                              alignment: _oCenter,
+                              transform: Matrix4.diagonal3Values(1, wink, 1),
+                              child: SvgPicture.asset('assets/branding/bronz_logo_o.svg'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Opacity(
+                    opacity: lineIn,
+                    child: Container(width: 40, height: 1.5, color: const Color(0xFFC9A35A)),
+                  ),
+                  const SizedBox(height: 16),
+                  Opacity(
+                    opacity: tagIn,
+                    child: const Text(
+                      'خيارك الأفضل للعطور ومستحضرات التجميل',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF3A3A3A)),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  Opacity(
+                    opacity: wordsIn,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        _word('عطور', 800),
+                        _dot(),
+                        _word('مكياج', 1250),
+                        _dot(),
+                        _word('عناية', 1700),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

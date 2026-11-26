@@ -1,5 +1,6 @@
 New in this release:
-• A fully redesigned categories page
+• A brand-new elegant splash screen
 • Shop by brand: every brand and its products in one place
-• A new navigation bar with custom Bronz icons
+• A fully redesigned categories page
+• Faster, more reliable product loading
 • Interface and performance improvements

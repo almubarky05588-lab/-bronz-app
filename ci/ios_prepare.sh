@@ -44,19 +44,8 @@ cat > "$ROOT/ios/Runner/Runner.entitlements" <<'EOF'
 </plist>
 EOF
 
-echo "▶ أيقونة الجمعة البيضاء (شريط أصفر على الأيقونة)"
-/tmp/iconenv/bin/pip install -q pillow
-curl -sL -o /tmp/Cairo.ttf "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf"
-/tmp/iconenv/bin/python "$ROOT/ci/make_bf_icon.py" "$ROOT/assets/branding/BRONZ_app_icon_4096.png" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_app_icon_bf_4096.png"
-sed -i '' 's#image_path: "assets/branding/BRONZ_app_icon_4096.png"#image_path: "assets/branding/BRONZ_app_icon_bf_4096.png"#' pubspec.yaml
-
-echo "▶ الشاشة الافتتاحية للجمعة البيضاء"
-brew list fribidi >/dev/null 2>&1 || brew install -q fribidi
-export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}"
-/tmp/iconenv/bin/python "$ROOT/ci/make_bf_splash.py" "$ROOT/assets/branding/BRONZ_splash_graphite.png" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_splash_wf.png"
-/tmp/iconenv/bin/python "$ROOT/ci/make_bf_splash.py" "$ROOT/assets/branding/BRONZ_splash_graphite.png" /tmp/Cairo.ttf "$ROOT/assets/branding/BRONZ_splash_wf_bg.png" notape
-sed -i '' 's#background_image: "assets/branding/BRONZ_splash_graphite.png"#background_image: "assets/branding/BRONZ_splash_wf.png"#' pubspec.yaml
-sed -i '' 's#^  color: "\#FFFFFF"#  color: "\#0A0A0A"#' pubspec.yaml
+# (الجمعة البيضاء انتهت — الأيقونة وشاشة الافتتاح الأصلية رجعت بدون الشريط)
+# لإرجاعها: ci/make_bf_icon.py و ci/make_bf_splash.py
 
 echo "▶ المكتبات والأيقونة والشاشة الافتتاحية"
 flutter pub get
