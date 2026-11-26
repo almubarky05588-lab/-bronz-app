@@ -14,6 +14,7 @@ import 'core/theme.dart';
 import 'screens/shell.dart';
 import 'widgets/common.dart';
 import 'widgets/promo_popup.dart';
+import 'widgets/update_prompt.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,7 +91,9 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.resumed && _removeSplash && !kScreenshots) {
       final away = _pausedAt == null ? Duration.zero : DateTime.now().difference(_pausedAt!);
       if (away >= const Duration(seconds: 60)) {
-        RemoteConfig.instance.refresh().then((_) => PromoPopup.maybeShow());
+        RemoteConfig.instance.refresh().then((_) async {
+          if (!await UpdatePrompt.check()) PromoPopup.maybeShow();
+        });
       }
     }
   }
@@ -122,6 +125,13 @@ class _LaunchState extends State<_Launch> with WidgetsBindingObserver {
 
     // إذن الإشعارات أولًا (مرة وحدة بالعمر)، ثم البوب اب لو مفعّل من اللوحة
     await Future.delayed(const Duration(milliseconds: 600));
+    // تحديث جديد؟ (لو إجباري نوقف هنا لين يحدّث)
+    try {
+      await RemoteConfig.instance.ensure().timeout(const Duration(seconds: 8));
+    } catch (_) {}
+    if (!mounted) return;
+    if (await UpdatePrompt.check()) return;
+    if (!mounted) return;
     await Push.askPermission();
     if (!mounted) return;
     await Future.delayed(const Duration(milliseconds: 500));

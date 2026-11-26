@@ -114,7 +114,8 @@ async function loadConfig(env) {
   try { c = raw ? JSON.parse(raw) : {}; } catch { c = {}; }
   const blocks = Array.isArray(c.blocks) ? c.blocks : (c.circles || c.rails ? migrate(c) : DEFAULT_BLOCKS);
   const saleEnd = typeof c.saleEnd === 'string' ? c.saleEnd : DEFAULT_SALE_END;
-  return { v: c.v || 0, blocks, popup: { ...DEFAULT_POPUP, ...(c.popup || {}) }, saleEnd };
+  const minVersion = typeof c.minVersion === 'string' ? c.minVersion : '';
+  return { v: c.v || 0, blocks, popup: { ...DEFAULT_POPUP, ...(c.popup || {}) }, saleEnd, minVersion };
 }
 
 async function getConfig(env) {
@@ -140,6 +141,12 @@ async function loadBrands(env) {
     b = mergeSeed(b);
     await env.CONFIG.put('brands', JSON.stringify(b));
   }
+  // تصحيح لمرة وحدة: شعارات ديور وشانيل طلعت كبيرة ومختلفة — ترجع كتابة مثل باقي الماركات
+  if (b !== BRANDS_SEED && !b.fixLogos1) {
+    (b.brands || []).forEach((x) => { if (/^(DIOR|CHANEL)$/i.test(String(x.en || '').trim())) x.logo = ''; });
+    b.fixLogos1 = true;
+    await env.CONFIG.put('brands', JSON.stringify(b));
+  }
   return {
     v: SEED_V,
     brands: (b.brands || []).map((x) => ({ en: x.en || '', ar: x.ar || '', logo: x.logo || '', hidden: !!x.hidden, ids: x.ids || [] })),
@@ -148,7 +155,7 @@ async function loadBrands(env) {
 }
 
 function mergeSeed(b) {
-  const out = { v: SEED_V, brands: b.brands.map((x) => ({ ...x, ids: (x.ids || []).map(Number) })) };
+  const out = { v: SEED_V, fixLogos1: !!b.fixLogos1, brands: b.brands.map((x) => ({ ...x, ids: (x.ids || []).map(Number) })) };
   const key = (x) => String(x.en || x.ar || '').trim().toUpperCase();
   const byKey = new Map(out.brands.map((x) => [key(x), x]));
   const assigned = new Set();
@@ -179,7 +186,7 @@ function cleanBrands(b) {
   const brands = (Array.isArray(b.brands) ? b.brands : []).slice(0, 400).map((x) => ({
     en: str(x.en, 40), ar: str(x.ar, 40), logo: str(x.logo, 600), hidden: !!x.hidden, ids: ids(x.ids),
   })).filter((x) => x.en || x.ar);
-  return { v: SEED_V, brands, unassigned: ids(b.unassigned) };
+  return { v: SEED_V, brands, unassigned: ids(b.unassigned), fixLogos1: true };
 }
 
 async function saveBrands(req, env) {
@@ -313,7 +320,10 @@ function clean(c) {
   // موعد نهاية العروض: تاريخ صالح أو فاضي (بدون عدّاد)
   const se = str(c.saleEnd, 40);
   const saleEnd = se && !Number.isNaN(Date.parse(se)) ? se : '';
-  return { v: Date.now(), blocks, popup, saleEnd };
+  // أقل نسخة مسموحة للتطبيق (مثل 1.0.9) — فاضي = بدون تحديث إجباري
+  const mv = str(c.minVersion, 20);
+  const minVersion = /^\d+(\.\d+){0,3}$/.test(mv) ? mv : '';
+  return { v: Date.now(), blocks, popup, saleEnd, minVersion };
 }
 
 // ───────── الروابط المختصرة ─────────

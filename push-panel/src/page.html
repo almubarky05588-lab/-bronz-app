@@ -172,6 +172,11 @@ textarea{resize:none;min-height:86px;line-height:1.6}
     <div class="add" style="margin-top:0"><input type="datetime-local" id="saleEnd" dir="ltr"><button class="btn2" id="saleEndClear">إيقاف</button></div>
     <p class="hint" id="saleEndHint"></p>
   </div>
+  <div class="card">
+    <div class="h">⬆️ تحديث إجباري</div>
+    <p class="hint" style="margin-bottom:10px">اكتب أقل نسخة مسموحة (مثل 1.0.9). أي عميل نسخته أقدم تطلع له نافذة «تحديث جديد متوفّر» بدون زر «لاحقًا» ولازم يحدّث. خلّها فاضية لو ما تبي إجبار — ومع ذلك أي نسخة جديدة في App Store تطلع للعملاء كنافذة عادية مرة باليوم.</p>
+    <input id="minVersion" dir="ltr" placeholder="مثال: 1.0.9" inputmode="decimal">
+  </div>
   <p class="hint" style="margin:0 4px 10px">الرئيسية تتكوّن من قطع — رتّبها بالأسهم ↑↓، وأضف اللي تبي من تحت. الشعار والبحث ثابتين فوق.</p>
   <div id="blocks"></div>
   <div class="card">
@@ -355,7 +360,7 @@ function catName(id) { id = Number(id); for (var i = 0; i < cats.length; i++) if
 function loadCfg() {
   if (cfg) return;
   Promise.all([fetch('/config').then(function (r) { return r.json(); }), fetch('/meta').then(function (r) { return r.json(); })])
-    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; cfg.blocks = cfg.blocks || []; renderHome(); fillPopup(); fillSaleEnd(); })
+    .then(function (res) { cfg = res[0]; cats = res[1].cats || []; cfg.blocks = cfg.blocks || []; renderHome(); fillPopup(); fillSaleEnd(); $('minVersion').value = cfg.minVersion || ''; })
     .catch(function () { toast('تعذّر تحميل الإعدادات'); });
 }
 
@@ -643,12 +648,15 @@ $('saveCfg').onclick = function () {
   if (pop.active && !pop.title.trim() && !pop.body.trim() && !pop.image) return toast('البوب اب: أضف صورة أو عنوان أو نص');
   cfg.popup = pop;
   cfg.saleEnd = $('saleEnd').value ? $('saleEnd').value + ':00+03:00' : '';
+  var mv = $('minVersion').value.trim();
+  if (mv && !/^\d+(\.\d+){0,3}$/.test(mv)) return toast('اكتب رقم النسخة بهذا الشكل: 1.0.9');
+  cfg.minVersion = mv;
   var btn = $('saveCfg'); btn.disabled = true; btn.textContent = 'جاري الحفظ…';
   fetch('/config', { method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': pin }, body: JSON.stringify(cfg) })
     .then(function (r) { return r.json().then(function (o) {
       if (r.status === 403) { LS.del(PIN); toast('الرمز السري غير صحيح'); return; }
       if (!r.ok) { toast(o.error || 'ما انحفظ'); return; }
-      cfg = o.config; renderHome(); fillPopup(); fillSaleEnd(); toast('انحفظ ✓ — سكّر التطبيق وافتحه تشوفه');
+      cfg = o.config; renderHome(); fillPopup(); fillSaleEnd(); $('minVersion').value = cfg.minVersion || ''; toast('انحفظ ✓ — سكّر التطبيق وافتحه تشوفه');
     }); })
     .catch(function () { toast('تعذّر الاتصال'); })
     .then(function () { btn.disabled = false; btn.textContent = 'حفظ ونشر للتطبيق'; });
@@ -696,7 +704,11 @@ function productRow(id, from) {
 function logoBox(b) {
   var d = el('div', 'blogo');
   if (b.logo) d.style.backgroundImage = 'url("' + b.logo + '")'; else d.textContent = b.en || b.ar;
-  d.onclick = function () { logoTarget = b; $('logoIn').value = ''; $('logoIn').click(); };
+  d.onclick = function () {
+    // عنده شعار؟ نخيّره: يغيّره أو يحذفه ويرجع كتابة
+    if (b.logo && !confirm('موافق = تغيير الشعار\nإلغاء = حذف الشعار وعرض الاسم مكتوب')) { b.logo = ''; renderBrands(); toast('انحذف الشعار ✓ — لا تنسى «حفظ ونشر»'); return; }
+    logoTarget = b; $('logoIn').value = ''; $('logoIn').click();
+  };
   return d;
 }
 function renderBrands() {

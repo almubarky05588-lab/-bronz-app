@@ -20,6 +20,11 @@ flutter create --org sa.almubarky --project-name bronz_app --platforms=ios .
 echo "▶ رقم البناء: $BUILD_NUMBER"
 sed -i '' -E "s/^version: (.*)\+.*/version: \1+$BUILD_NUMBER/" pubspec.yaml
 
+# نسخة التطبيق داخل الكود (لنافذة «تحديث جديد متوفّر»)
+APP_VERSION=$(grep -E '^version:' pubspec.yaml | sed -E 's/version: *([0-9.]+).*/\1/')
+printf "// نسخة التطبيق — تُكتب تلقائيًا من pubspec.yaml وقت البناء (ci/ios_prepare.sh).\nconst appVersion = '%s';\n" "$APP_VERSION" > lib/core/app_version.dart
+echo "نسخة التطبيق: $APP_VERSION"
+
 echo "▶ هوية التطبيق"
 P="$ROOT/ios/Runner/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName برونز" "$P"

@@ -207,7 +207,9 @@ class AppConfig {
   final List<BrandInfo> brands;
   /// نهاية حملة العروض (من اللوحة) — عدّاد «ينتهي بعد» على المنتجات المخفّضة
   final DateTime? saleEnd;
-  const AppConfig({required this.blocks, this.popup, this.brands = const [], this.saleEnd});
+  /// أقل نسخة مسموحة (من اللوحة) — أي نسخة أقدم يُطلب منها التحديث إجباريًا
+  final String minVersion;
+  const AppConfig({required this.blocks, this.popup, this.brands = const [], this.saleEnd, this.minVersion = ''});
 
   factory AppConfig.fromJson(Map<String, dynamic> m) => AppConfig(
         blocks: (m['blocks'] is List ? m['blocks'] as List : const [])
@@ -222,6 +224,7 @@ class AppConfig {
             .where((b) => b.ids.isNotEmpty && (b.en.isNotEmpty || b.ar.isNotEmpty))
             .toList(),
         saleEnd: DateTime.tryParse('${m['saleEnd'] ?? ''}'.trim()),
+        minVersion: '${m['minVersion'] ?? ''}'.trim(),
       );
 }
 
