@@ -51,7 +51,7 @@ class _ProductScreenState extends State<ProductScreen> {
     showBronzToast(
       context,
       err ?? 'تم! بنرسل لك إشعار أول ما يتوفّر',
-      icon: err == null ? PhosphorIcons.bellRinging(PhosphorIconsStyle.fill) : PhosphorIcons.warningCircle(PhosphorIconsStyle.fill),
+      icon: err == null ? PhosphorIcons.bellSimple(PhosphorIconsStyle.fill) : PhosphorIcons.bellSimple(),
     );
   }
 
