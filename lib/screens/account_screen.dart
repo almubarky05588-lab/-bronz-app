@@ -104,7 +104,8 @@ class _AccountScreenState extends State<AccountScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('حسابي')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        // المحتوى يمرّ تحت الشريط العائم بدون قصّ — والمسافة السفلية تخلّي آخره فوق الشريط
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 110 + MediaQuery.paddingOf(context).bottom),
         children: [
           FadeSlideIn(
             child: FutureBuilder<String?>(
@@ -357,7 +358,7 @@ class _AccountScreenState extends State<AccountScreen> {
           const Center(child: BronzLogo(width: 90)),
           const SizedBox(height: 4),
           const Center(
-            child: Text('عطور أصلية بلمسة فخامة', style: TextStyle(color: BronzColors.muted, fontSize: 12)),
+            child: Text('خيارك الأفضل للعطور ومستحضرات التجميل', style: TextStyle(color: BronzColors.muted, fontSize: 12)),
           ),
         ],
       ),

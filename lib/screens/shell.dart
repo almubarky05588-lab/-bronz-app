@@ -98,7 +98,7 @@ class _ShellState extends State<Shell> {
             const CategoriesScreen(), // تمر تحت الشريط وتضيف مسافتها بنفسها
             Padding(padding: pad, child: const _OffersTab()),
             Padding(padding: pad, child: const CartScreen()),
-            Padding(padding: pad, child: const AccountScreen()),
+            const AccountScreen(), // تمر تحت الشريط وتضيف مسافتها بنفسها
           ],
         );
       }),
