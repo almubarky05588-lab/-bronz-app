@@ -49,6 +49,9 @@ EOF
 
 echo "▶ المكتبات والأيقونة والشاشة الافتتاحية"
 flutter pub get
+
+# فحص الكود قبل البناء: أي خطأ برمجي يظهر هنا بوضوح بدل ما يضيع في سجل Xcode
+flutter analyze --no-fatal-infos --no-fatal-warnings lib
 dart run flutter_launcher_icons
 dart run flutter_native_splash:create
 
