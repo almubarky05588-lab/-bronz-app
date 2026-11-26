@@ -177,8 +177,11 @@ class BrandSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kWhiteFriday) return const _WhiteFridaySplash();
-    return const _BronzSplash();
+    // Material يزيل الخط الأصفر المزدوج تحت النصوص (يظهر لما ما يكون فيه Material فوقها)
+    return const Material(
+      color: Colors.white,
+      child: kWhiteFriday ? _WhiteFridaySplash() : _BronzSplash(),
+    );
   }
 }
 
