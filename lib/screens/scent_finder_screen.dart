@@ -4,6 +4,7 @@ import '../core/product.dart';
 import '../core/store_api.dart';
 import '../core/theme.dart';
 import '../widgets/product_grid.dart';
+import '../widgets/brand_icons.dart';
 import 'category_screen.dart';
 
 /// «دليل العطور»: اختر لمين (رجالي / نسائي / للجنسين) ونوع الرائحة.
@@ -16,10 +17,11 @@ class ScentFinderScreen extends StatefulWidget {
 
 class _Opt {
   final String label;
-  final String emoji;
+  final String icon; // أيقونة SVG (للروائح) — فاضية للجنس
   final List<String> terms; // كلمات البحث في المتجر
   final int? category;
-  const _Opt(this.label, this.emoji, {this.terms = const [], this.category});
+  final String desc; // وصف قصير فوق النتائج
+  const _Opt(this.label, this.icon, {this.terms = const [], this.category, this.desc = ''});
 }
 
 class _ScentFinderScreenState extends State<ScentFinderScreen> {
@@ -27,20 +29,20 @@ class _ScentFinderScreenState extends State<ScentFinderScreen> {
   static const _perfumeCats = [_men, _women, _unisex];
 
   static const _genders = <_Opt>[
-    _Opt('الكل', '✨'),
-    _Opt('رجالي', '🤵', category: _men),
-    _Opt('نسائي', '💃', category: _women),
-    _Opt('للجنسين', '🤝', category: _unisex),
+    _Opt('الكل', '', desc: 'كل العطور'),
+    _Opt('رجالي', '', category: _men, desc: 'عطور رجالية'),
+    _Opt('نسائي', '', category: _women, desc: 'عطور نسائية'),
+    _Opt('للجنسين', '', category: _unisex, desc: 'عطور للجنسين'),
   ];
 
   static const _scents = <_Opt>[
-    _Opt('كل الروائح', '🌈'),
-    _Opt('عودي', '🪵', terms: ['عود', 'oud']),
-    _Opt('زهري', '🌸', terms: ['ورد', 'زهر', 'ياسمين', 'rose']),
-    _Opt('حلو وفانيلا', '🍬', terms: ['فانيلا', 'vanilla', 'حلو', 'كراميل']),
-    _Opt('مسك', '🤍', terms: ['مسك', 'musk']),
-    _Opt('فريش ومنعش', '🍋', terms: ['فريش', 'منعش', 'حمضي', 'ليمون', 'بحري', 'fresh']),
-    _Opt('خشبي وعنبري', '🌲', terms: ['خشب', 'صندل', 'عنبر', 'amber', 'wood']),
+    _Opt('كل الروائح', BrandIcons.scentAll),
+    _Opt('عودي', BrandIcons.scentOud, terms: ['عود', 'oud'], desc: 'بلمسة عودية'),
+    _Opt('زهري', BrandIcons.scentFloral, terms: ['ورد', 'زهر', 'ياسمين', 'rose'], desc: 'بلمسة زهرية'),
+    _Opt('حلو وفانيلا', BrandIcons.scentSweet, terms: ['فانيلا', 'vanilla', 'حلو', 'كراميل'], desc: 'بلمسة حلوة وفانيلا'),
+    _Opt('مسك', BrandIcons.scentMusk, terms: ['مسك', 'musk'], desc: 'بلمسة مسك'),
+    _Opt('فريش', BrandIcons.scentFresh, terms: ['فريش', 'منعش', 'حمضي', 'ليمون', 'بحري', 'fresh'], desc: 'بلمسة فريش ومنعشة'),
+    _Opt('خشبي', BrandIcons.scentWoody, terms: ['خشب', 'صندل', 'عنبر', 'amber', 'wood'], desc: 'بلمسة خشبية وعنبرية'),
   ];
 
   int _g = 0, _s = 0;
@@ -107,34 +109,92 @@ class _ScentFinderScreenState extends State<ScentFinderScreen> {
     return page > 1 ? Future.value(const <Product>[]) : _byScent(s, g.category);
   }
 
-  Widget _chips(List<_Opt> opts, int sel, ValueChanged<int> pick) {
+  /// شريط «لمين العطر؟»
+  Widget _segment() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFF3F1EC), borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          for (var i = 0; i < _genders.length; i++)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _g = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: i == _g ? BronzColors.ink : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: i == _g
+                        ? const [BoxShadow(color: Color(0x26000000), blurRadius: 12, offset: Offset(0, 4))]
+                        : null,
+                  ),
+                  child: Text(
+                    _genders[i].label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: i == _g ? Colors.white : const Color(0xFF6E6A63),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// مربعات الروائح
+  Widget _scentTiles() {
     return SizedBox(
-      height: 42,
+      height: 104,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: opts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemCount: _scents.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final on = i == sel;
+          final on = i == _s;
           return GestureDetector(
-            onTap: () => setState(() => pick(i)),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: on ? BronzColors.ink : Colors.white,
-                borderRadius: BorderRadius.circular(21),
-                border: Border.all(color: on ? BronzColors.ink : BronzColors.line),
-              ),
-              child: Text(
-                '${opts[i].emoji}  ${opts[i].label}',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: on ? Colors.white : BronzColors.ink,
-                ),
+            onTap: () => setState(() => _s = i),
+            child: SizedBox(
+              width: 74,
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 74,
+                    height: 74,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: on ? const Color(0xFFFBF4E6) : const Color(0xFFF7F5F0),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: on ? const Color(0xFFC9A35A) : Colors.transparent, width: 1.6),
+                    ),
+                    child: AnimatedScale(
+                      scale: on ? 1.08 : 1,
+                      duration: const Duration(milliseconds: 200),
+                      child: BIcon(_scents[i].icon, size: 36),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _scents[i].label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: on ? BronzColors.ink : const Color(0xFF4A4741),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -144,9 +204,14 @@ class _ScentFinderScreenState extends State<ScentFinderScreen> {
   }
 
   Widget _label(String t) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-        child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: BronzColors.muted)),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+        child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF8A867E))),
       );
+
+  String get _desc {
+    final g = _genders[_g].desc, s = _scents[_s].desc;
+    return s.isEmpty ? g : '$g $s';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -158,10 +223,20 @@ class _ScentFinderScreenState extends State<ScentFinderScreen> {
           children: [
             const BronzHeader(title: 'دليل العطور'),
             _label('العطر لمين؟'),
-            _chips(_genders, _g, (i) => _g = i),
+            _segment(),
             _label('وش الرائحة اللي تحبها؟'),
-            _chips(_scents, _s, (i) => _s = i),
-            const SizedBox(height: 10),
+            _scentTiles(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  _desc,
+                  key: ValueKey(_desc),
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF8A867E)),
+                ),
+              ),
+            ),
             Expanded(
               child: ProductGrid(
                 key: ValueKey('$_g-$_s'),
@@ -192,23 +267,37 @@ class ScentFinderCard extends StatelessWidget {
             gradient: const LinearGradient(colors: [Color(0xFF1C1A17), Color(0xFF3A3123)]),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Text('🧭', style: TextStyle(fontSize: 30)),
-              SizedBox(width: 12),
-              Expanded(
+              Container(
+                width: 50,
+                height: 50,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0x24C9A35A),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const BIcon(BrandIcons.bottleGold, size: 32),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('دليل العطور',
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                     SizedBox(height: 2),
-                    Text('اختر عطرك حسب الرائحة: عودي، زهري، مسك…',
+                    Text('اختر عطرك حسب الرائحة',
                         style: TextStyle(color: Color(0xFFD9C7A0), fontSize: 12.5)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_left_rounded, color: Color(0xFFC9A35A), size: 28),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(color: Color(0xFFC9A35A), shape: BoxShape.circle),
+                child: const Icon(Icons.chevron_left_rounded, color: BronzColors.ink, size: 24),
+              ),
             ],
           ),
         ),
